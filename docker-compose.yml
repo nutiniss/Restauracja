@@ -1,0 +1,11 @@
+services:
+  restaurant-api:
+    build: ./Solution.Api
+    ports:
+      - "5000:8080"
+    volumes:
+      - restaurant-data:/app/data
+    environment:
+      - ConnectionStrings__RestaurantDb=Data Source=/app/data/restaurant.db
+volumes:
+  restaurant-data:

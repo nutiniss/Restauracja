@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { createSeedRestaurantStore } from './src/data/seedRestaurantStore';
+import React, { useEffect, useState } from 'react';
+import { restaurantApi } from './src/api/restaurantApi';
 import {
   MenuItem,
   Order,
@@ -19,7 +19,7 @@ import { MenuScreen } from './src/ui/screens/MenuScreen';
 import { TablesScreen } from './src/ui/screens/TablesScreen';
 import { WaitersScreen } from './src/ui/screens/WaitersScreen';
 
-const initialStore = createSeedRestaurantStore();
+const initialStore = restaurantApi.seedStore();
 
 function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<AppTab>('tables');
@@ -31,6 +31,21 @@ function App(): React.JSX.Element {
   const [search, setSearch] = useState('');
   const [isTableDetailsOpen, setIsTableDetailsOpen] = useState(false);
   const [menuSourceTableId, setMenuSourceTableId] = useState<number>();
+  const [apiStatus, setApiStatus] = useState('Ładowanie danych z API...');
+
+  const syncStore = async (operation: () => Promise<RestaurantStore>) => {
+    try {
+      const nextStore = await operation();
+      setStore(nextStore);
+      setApiStatus('Połączono z API i bazą danych');
+    } catch {
+      setApiStatus('Tryb offline: używam lokalnego stanu aplikacji');
+    }
+  };
+
+  useEffect(() => {
+    syncStore(restaurantApi.getStore);
+  }, []);
 
   const selectedTable =
     store.tables.find(table => table.id === selectedTableId) ?? store.tables[0];
@@ -55,6 +70,7 @@ function App(): React.JSX.Element {
       .reduce((sum, item) => sum + item.total, 0);
 
   const openOrder = (table: RestaurantTable) => {
+    syncStore(() => restaurantApi.openOrder(table.id));
     if (table.orderId) {
       setSelectedTableId(table.id);
       setIsTableDetailsOpen(true);
@@ -96,6 +112,8 @@ function App(): React.JSX.Element {
     if (!menuItem.isAvailable || quantity <= 0) {
       return;
     }
+
+    syncStore(() => restaurantApi.addItem(tableId, menuItem.id, quantity, notes));
 
     setStore(current => {
       const table = current.tables.find(
@@ -212,6 +230,7 @@ function App(): React.JSX.Element {
   };
 
   const assignWaiterToSelectedTable = (waiterId: number) => {
+    syncStore(() => restaurantApi.assignWaiter(selectedTable.id, waiterId));
     setStore(current => ({
       ...current,
       tables: current.tables.map(table =>
@@ -227,6 +246,8 @@ function App(): React.JSX.Element {
     if (!selectedOrder || selectedItemIds.length === 0) {
       return;
     }
+
+    syncStore(() => restaurantApi.payOrder(selectedOrder.id, paymentMethodId, selectedItemIds));
 
     setStore(current => {
       const itemsToPay = current.orderItems.filter(
@@ -262,6 +283,8 @@ function App(): React.JSX.Element {
       return;
     }
 
+    syncStore(() => restaurantApi.payOrder(selectedOrder.id, paymentMethodId));
+
     setStore(current => {
       const itemsToPay = current.orderItems.filter(
         item => item.orderId === selectedOrder.id && !item.isPaid,
@@ -289,6 +312,7 @@ function App(): React.JSX.Element {
   };
 
   const releaseSelectedTable = () => {
+    syncStore(() => restaurantApi.releaseTable(selectedTable.id));
     setStore(current => ({
       ...current,
       tables: current.tables.map(table =>
@@ -300,7 +324,7 @@ function App(): React.JSX.Element {
   };
 
   return (
-    <AppShell activeTab={activeTab} onChangeTab={changeTab}>
+    <AppShell activeTab={activeTab} apiStatus={apiStatus} onChangeTab={changeTab}>
       {activeTab === 'tables' && (
         <TablesScreen
           tables={store.tables}
