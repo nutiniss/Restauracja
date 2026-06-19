@@ -89,6 +89,218 @@ export function TablesScreen({
     onCloseDetails();
   };
 
+  if (isDetailsOpen) {
+    return (
+      <>
+        <ScrollView contentContainerStyle={styles.content}>
+          <SectionTitle
+            title={`Rachunek stolika ${selectedTable.number}`}
+            subtitle={`Kelner: ${assignedWaiter?.fullName ?? 'brak'}`}
+          />
+
+          <View style={styles.detailsActions}>
+            <Pressable style={styles.backButton} onPress={closeDetails}>
+              <Text style={styles.backButtonText}>Wróć do sali</Text>
+            </Pressable>
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={() => setIsWaiterModalOpen(true)}
+            >
+              <Text style={styles.secondaryButtonText}>
+                {assignedWaiter ? 'Zmień kelnera' : 'Dodaj kelnera'}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.rowBetween}>
+            <Text style={styles.amount}>{money(remainingAmount)} do zapłaty</Text>
+            <Pressable style={styles.primaryButton} onPress={onAddOrderItem}>
+              <Text style={styles.primaryButtonText}>Dodaj pozycję</Text>
+            </Pressable>
+          </View>
+
+          {!selectedOrder && (
+            <Text style={styles.emptyText}>
+              Ten stolik nie ma jeszcze otwartego zamówienia.
+            </Text>
+          )}
+
+          {orderItems.map(item => {
+            const menuItem = getMenuItem(item.menuItemId);
+            const selected = selectedItemIds.includes(item.id);
+
+            return (
+              <Pressable
+                key={item.id}
+                disabled={item.isPaid}
+                style={[
+                  styles.orderRow,
+                  selected && styles.orderRowSelected,
+                  item.isPaid && styles.orderRowPaid,
+                ]}
+                onPress={() => onTogglePaymentItem(item.id)}
+              >
+                <View style={styles.flexOne}>
+                  <Text style={styles.orderName}>
+                    {menuItem?.name ?? 'Pozycja'} x{item.quantity}
+                  </Text>
+                  <Text style={styles.cardMuted}>
+                    {item.isPaid
+                      ? 'Opłacone'
+                      : 'Dotknij, aby zaznaczyć do płatności'}
+                  </Text>
+                </View>
+                <Text style={styles.orderAmount}>{money(item.total)}</Text>
+              </Pressable>
+            );
+          })}
+
+          <View style={styles.summaryBox}>
+            <Text style={styles.cardText}>
+              Razem: {money(getOrderTotal(selectedOrder?.id))}
+            </Text>
+            <Text style={styles.cardText}>
+              Zapłacono: {money(getPaidTotal(selectedOrder?.id))}
+            </Text>
+            <Text style={styles.summaryAmount}>
+              Pozostało:{' '}
+              {money(
+                getOrderTotal(selectedOrder?.id) - getPaidTotal(selectedOrder?.id),
+              )}
+            </Text>
+          </View>
+
+          <View style={styles.paymentCard}>
+            <Text style={styles.sectionHeading}>Płatność</Text>
+            <View style={styles.methodRow}>
+              {paymentMethods.map(method => (
+                <Pressable
+                  key={method.id}
+                  style={[
+                    styles.chip,
+                    paymentMethodId === method.id && styles.chipActive,
+                  ]}
+                  onPress={() => onChangePaymentMethod(method.id)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      paymentMethodId === method.id && styles.chipTextActive,
+                    ]}
+                  >
+                    {method.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            {isBillPaid && (
+              <Text style={styles.paidMessage}>Rachunek został opłacony.</Text>
+            )}
+            <View style={styles.paymentActionRow}>
+              <Text style={styles.summaryAmount}>Wybrano: {money(selectedAmount)}</Text>
+              <Pressable
+                disabled={selectedAmount === 0 || isBillPaid}
+                style={[
+                  styles.primaryButton,
+                  (selectedAmount === 0 || isBillPaid) && styles.disabledButton,
+                ]}
+                onPress={onPaySelectedItems}
+              >
+                <Text style={styles.primaryButtonText}>Zapłać wybrane</Text>
+              </Pressable>
+            </View>
+            <View style={styles.paymentActionRow}>
+              <Text style={styles.remainingLabel}>
+                Pozostało do zapłaty: {money(remainingAmount)}
+              </Text>
+              <Pressable
+                disabled={remainingAmount === 0}
+                style={[
+                  styles.primaryButton,
+                  remainingAmount === 0 && styles.disabledButton,
+                ]}
+                onPress={onPayFullBill}
+              >
+                <Text style={styles.primaryButtonText}>Opłać całość</Text>
+              </Pressable>
+            </View>
+            {isBillPaid && (
+              <Pressable
+                style={[styles.primaryButton, styles.releaseButton]}
+                onPress={onReleaseTable}
+              >
+                <Text style={styles.primaryButtonText}>Zwolnij stolik</Text>
+              </Pressable>
+            )}
+          </View>
+        </ScrollView>
+
+        <Modal
+          animationType="fade"
+          transparent
+          visible={isWaiterModalOpen}
+          onRequestClose={() => setIsWaiterModalOpen(false)}
+        >
+          <View style={styles.overlayBackdrop}>
+            <View style={styles.waiterModalWindow}>
+              <View style={styles.rowBetween}>
+                <View style={styles.flexOne}>
+                  <Text style={styles.sectionHeading}>Wybierz kelnera</Text>
+                  <Text style={styles.cardMuted}>
+                    Stolik {selectedTable.number} zostanie przypisany do wybranej
+                    osoby.
+                  </Text>
+                </View>
+                <Pressable
+                  hitSlop={12}
+                  style={styles.closeButton}
+                  onPress={() => setIsWaiterModalOpen(false)}
+                >
+                  <Text style={styles.closeButtonText}>×</Text>
+                </Pressable>
+              </View>
+              <View style={styles.waiterList}>
+                {waiters.map(waiter => (
+                  <Pressable
+                    key={waiter.id}
+                    disabled={!waiter.isActive}
+                    style={[
+                      styles.waiterOption,
+                      selectedTable.waiterId === waiter.id &&
+                        styles.waiterOptionActive,
+                      !waiter.isActive && styles.disabledChip,
+                    ]}
+                    onPress={() => assignWaiterAndClose(waiter.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.waiterOptionText,
+                        selectedTable.waiterId === waiter.id &&
+                          styles.waiterOptionTextActive,
+                      ]}
+                    >
+                      {waiter.fullName}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.cardMuted,
+                        selectedTable.waiterId === waiter.id &&
+                          styles.waiterOptionTextActive,
+                      ]}
+                    >
+                      Kod: {waiter.code} •{' '}
+                      {waiter.isActive ? 'aktywny' : 'nieaktywny'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </>
+    );
+  }
+
   return (
     <>
       <ScrollView contentContainerStyle={styles.content}>
@@ -124,242 +336,6 @@ export function TablesScreen({
           })}
         </View>
       </ScrollView>
-
-      <Modal
-        animationType="slide"
-        visible={isDetailsOpen}
-        transparent={false}
-        onRequestClose={closeDetails}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalWindow}>
-            <ScrollView contentContainerStyle={styles.modalContent}>
-              <View style={styles.rowBetween}>
-                <View style={styles.flexOne}>
-                  <Text style={styles.sectionHeading}>
-                    Rachunek stolika {selectedTable.number}
-                  </Text>
-                  <Text style={styles.cardMuted}>
-                    Kelner: {assignedWaiter?.fullName ?? 'brak'}
-                  </Text>
-                </View>
-                <Pressable
-                  style={styles.secondaryButton}
-                  onPress={() => setIsWaiterModalOpen(true)}
-                >
-                  <Text style={styles.secondaryButtonText}>
-                    {assignedWaiter ? 'Zmień' : 'Dodaj'}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  hitSlop={12}
-                  style={styles.closeButton}
-                  onPress={closeDetails}
-                >
-                  <Text style={styles.closeButtonText}>×</Text>
-                </Pressable>
-              </View>
-
-              <View style={styles.rowBetween}>
-                <Text style={styles.amount}>
-                  {money(remainingAmount)} do zapłaty
-                </Text>
-                <Pressable
-                  style={styles.primaryButton}
-                  onPress={onAddOrderItem}
-                >
-                  <Text style={styles.primaryButtonText}>Dodaj pozycję</Text>
-                </Pressable>
-              </View>
-
-              {!selectedOrder && (
-                <Text style={styles.emptyText}>
-                  Ten stolik nie ma jeszcze otwartego zamówienia.
-                </Text>
-              )}
-
-              {orderItems.map(item => {
-                const menuItem = getMenuItem(item.menuItemId);
-                const selected = selectedItemIds.includes(item.id);
-
-                return (
-                  <Pressable
-                    key={item.id}
-                    disabled={item.isPaid}
-                    style={[
-                      styles.orderRow,
-                      selected && styles.orderRowSelected,
-                      item.isPaid && styles.orderRowPaid,
-                    ]}
-                    onPress={() => onTogglePaymentItem(item.id)}
-                  >
-                    <View style={styles.flexOne}>
-                      <Text style={styles.orderName}>
-                        {menuItem?.name ?? 'Pozycja'} x{item.quantity}
-                      </Text>
-                      <Text style={styles.cardMuted}>
-                        {item.isPaid
-                          ? 'Opłacone'
-                          : 'Dotknij, aby zaznaczyć do płatności'}
-                      </Text>
-                    </View>
-                    <Text style={styles.orderAmount}>{money(item.total)}</Text>
-                  </Pressable>
-                );
-              })}
-
-              <View style={styles.summaryBox}>
-                <Text style={styles.cardText}>
-                  Razem: {money(getOrderTotal(selectedOrder?.id))}
-                </Text>
-                <Text style={styles.cardText}>
-                  Zapłacono: {money(getPaidTotal(selectedOrder?.id))}
-                </Text>
-                <Text style={styles.summaryAmount}>
-                  Pozostało:{' '}
-                  {money(
-                    getOrderTotal(selectedOrder?.id) -
-                      getPaidTotal(selectedOrder?.id),
-                  )}
-                </Text>
-              </View>
-
-              <View style={styles.paymentCard}>
-                <Text style={styles.sectionHeading}>Płatność</Text>
-                <View style={styles.methodRow}>
-                  {paymentMethods.map(method => (
-                    <Pressable
-                      key={method.id}
-                      style={[
-                        styles.chip,
-                        paymentMethodId === method.id && styles.chipActive,
-                      ]}
-                      onPress={() => onChangePaymentMethod(method.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          paymentMethodId === method.id &&
-                            styles.chipTextActive,
-                        ]}
-                      >
-                        {method.name}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-                {isBillPaid && (
-                  <Text style={styles.paidMessage}>
-                    Rachunek został opłacony.
-                  </Text>
-                )}
-                <View style={styles.paymentActionRow}>
-                  <Text style={styles.summaryAmount}>
-                    Wybrano: {money(selectedAmount)}
-                  </Text>
-                  <Pressable
-                    disabled={selectedAmount === 0 || isBillPaid}
-                    style={[
-                      styles.primaryButton,
-                      (selectedAmount === 0 || isBillPaid) &&
-                        styles.disabledButton,
-                    ]}
-                    onPress={onPaySelectedItems}
-                  >
-                    <Text style={styles.primaryButtonText}>Zapłać wybrane</Text>
-                  </Pressable>
-                </View>
-                <View style={styles.paymentActionRow}>
-                  <Text style={styles.remainingLabel}>
-                    Pozostało do zapłaty: {money(remainingAmount)}
-                  </Text>
-                  <Pressable
-                    disabled={remainingAmount === 0}
-                    style={[
-                      styles.primaryButton,
-                      remainingAmount === 0 && styles.disabledButton,
-                    ]}
-                    onPress={onPayFullBill}
-                  >
-                    <Text style={styles.primaryButtonText}>Opłać całość</Text>
-                  </Pressable>
-                </View>
-                {isBillPaid && (
-                  <Pressable
-                    style={[styles.primaryButton, styles.releaseButton]}
-                    onPress={onReleaseTable}
-                  >
-                    <Text style={styles.primaryButtonText}>Zwolnij stolik</Text>
-                  </Pressable>
-                )}
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        animationType="fade"
-        transparent
-        visible={isWaiterModalOpen}
-        onRequestClose={() => setIsWaiterModalOpen(false)}
-      >
-        <View style={styles.overlayBackdrop}>
-          <View style={styles.waiterModalWindow}>
-            <View style={styles.rowBetween}>
-              <View style={styles.flexOne}>
-                <Text style={styles.sectionHeading}>Wybierz kelnera</Text>
-                <Text style={styles.cardMuted}>
-                  Stolik {selectedTable.number} zostanie przypisany do wybranej
-                  osoby.
-                </Text>
-              </View>
-              <Pressable
-                hitSlop={12}
-                style={styles.closeButton}
-                onPress={() => setIsWaiterModalOpen(false)}
-              >
-                <Text style={styles.closeButtonText}>×</Text>
-              </Pressable>
-            </View>
-            <View style={styles.waiterList}>
-              {waiters.map(waiter => (
-                <Pressable
-                  key={waiter.id}
-                  disabled={!waiter.isActive}
-                  style={[
-                    styles.waiterOption,
-                    selectedTable.waiterId === waiter.id &&
-                      styles.waiterOptionActive,
-                    !waiter.isActive && styles.disabledChip,
-                  ]}
-                  onPress={() => assignWaiterAndClose(waiter.id)}
-                >
-                  <Text
-                    style={[
-                      styles.waiterOptionText,
-                      selectedTable.waiterId === waiter.id &&
-                        styles.waiterOptionTextActive,
-                    ]}
-                  >
-                    {waiter.fullName}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.cardMuted,
-                      selectedTable.waiterId === waiter.id &&
-                        styles.waiterOptionTextActive,
-                    ]}
-                  >
-                    Kod: {waiter.code} •{' '}
-                    {waiter.isActive ? 'aktywny' : 'nieaktywny'}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        </View>
-      </Modal>
     </>
   );
 }
@@ -384,6 +360,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   tableNumber: { color: colors.text, fontSize: 18, fontWeight: '800' },
+  detailsActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  backButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButtonText: { color: '#fff', fontWeight: '800', textAlign: 'center' },
   cardMuted: {
     color: colors.muted,
     fontSize: 13,
@@ -411,19 +400,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 38,
   },
-  modalBackdrop: {
-    backgroundColor: colors.surface,
-    flex: 1,
-  },
-  modalWindow: {
-    backgroundColor: colors.surface,
-    elevation: 6,
-    flex: 1,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-  },
-  modalContent: { padding: 16, paddingBottom: 28 },
   paymentCard: {
     backgroundColor: colors.background,
     borderRadius: 18,

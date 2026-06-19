@@ -180,6 +180,8 @@ function App(): React.JSX.Element {
     if (tab === 'menu') {
       setMenuSourceTableId(undefined);
     }
+    setIsTableDetailsOpen(false);
+    setSelectedItemIds([]);
     setActiveTab(tab);
   };
 
