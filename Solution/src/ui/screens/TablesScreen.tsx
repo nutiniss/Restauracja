@@ -34,11 +34,12 @@ export function TablesScreen({
   getMenuItem,
   getOrderTotal,
   getPaidTotal,
-  onSelectTable,
   onOpenOrder,
   onTogglePaymentItem,
   onChangePaymentMethod,
   onPaySelectedItems,
+  onPayFullBill,
+  onReleaseTable,
   onCloseDetails,
   onAddOrderItem,
 }: {
@@ -54,17 +55,23 @@ export function TablesScreen({
   getMenuItem: (id: number) => MenuItem | undefined;
   getOrderTotal: (orderId?: number) => number;
   getPaidTotal: (orderId?: number) => number;
-  onSelectTable: (tableId: number) => void;
   onOpenOrder: (table: RestaurantTable) => void;
   onTogglePaymentItem: (itemId: number) => void;
   onChangePaymentMethod: (methodId: number) => void;
   onPaySelectedItems: () => void;
+  onPayFullBill: () => void;
+  onReleaseTable: () => void;
   onCloseDetails: () => void;
   onAddOrderItem: () => void;
 }) {
   const selectedAmount = orderItems
     .filter(item => selectedItemIds.includes(item.id) && !item.isPaid)
     .reduce((sum, item) => sum + item.total, 0);
+  const remainingAmount = Math.max(
+    getOrderTotal(selectedOrder?.id) - getPaidTotal(selectedOrder?.id),
+    0,
+  );
+  const isBillPaid = Boolean(selectedOrder) && remainingAmount === 0;
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -85,7 +92,7 @@ export function TablesScreen({
                 styles.tableCard,
                 selectedTable.id === table.id && styles.selectedCard,
               ]}
-              onPress={() => onSelectTable(table.id)}
+              onPress={() => onOpenOrder(table)}
             >
               <View style={styles.rowBetween}>
                 <Text style={styles.tableNumber}>Stolik {table.number}</Text>
@@ -98,14 +105,6 @@ export function TablesScreen({
                 Kelner: {waiter?.fullName ?? 'nieprzypisany'}
               </Text>
               <Text style={styles.amount}>{money(remaining)} do zapłaty</Text>
-              <Pressable
-                style={styles.secondaryButton}
-                onPress={() => onOpenOrder(table)}
-              >
-                <Text style={styles.secondaryButtonText}>
-                  {table.orderId ? 'Otwórz szczegóły' : 'Nowe zamówienie'}
-                </Text>
-              </Pressable>
             </Pressable>
           );
         })}
@@ -114,7 +113,7 @@ export function TablesScreen({
       <Modal
         animationType="slide"
         visible={isDetailsOpen}
-        transparent
+        transparent={false}
         onRequestClose={onCloseDetails}
       >
         <View style={styles.modalBackdrop}>
@@ -131,17 +130,13 @@ export function TablesScreen({
                   </Text>
                 </View>
                 <Pressable style={styles.closeButton} onPress={onCloseDetails}>
-                  <Text style={styles.closeButtonText}>Zamknij</Text>
+                  <Text style={styles.closeButtonText}>×</Text>
                 </Pressable>
               </View>
 
               <View style={styles.rowBetween}>
                 <Text style={styles.amount}>
-                  {money(
-                    getOrderTotal(selectedOrder?.id) -
-                      getPaidTotal(selectedOrder?.id),
-                  )}{' '}
-                  do zapłaty
+                  {money(remainingAmount)} do zapłaty
                 </Text>
                 <Pressable
                   style={styles.primaryButton}
@@ -204,13 +199,7 @@ export function TablesScreen({
               </View>
 
               <View style={styles.paymentCard}>
-                <Text style={styles.sectionHeading}>
-                  Płatność za wybrane pozycje
-                </Text>
-                <Text style={styles.cardMuted}>
-                  Jedna pozycja rachunku może być opłacona tylko raz i tylko
-                  jedną płatnością.
-                </Text>
+                <Text style={styles.sectionHeading}>Płatność</Text>
                 <View style={styles.methodRow}>
                   {paymentMethods.map(method => (
                     <Pressable
@@ -233,20 +222,50 @@ export function TablesScreen({
                     </Pressable>
                   ))}
                 </View>
-                <View style={styles.rowBetween}>
+                {isBillPaid && (
+                  <Text style={styles.paidMessage}>
+                    Rachunek został opłacony.
+                  </Text>
+                )}
+                <View style={styles.paymentActionRow}>
                   <Text style={styles.summaryAmount}>
                     Wybrano: {money(selectedAmount)}
                   </Text>
                   <Pressable
+                    disabled={selectedAmount === 0 || isBillPaid}
                     style={[
                       styles.primaryButton,
-                      selectedAmount === 0 && styles.disabledButton,
+                      (selectedAmount === 0 || isBillPaid) &&
+                        styles.disabledButton,
                     ]}
                     onPress={onPaySelectedItems}
                   >
-                    <Text style={styles.primaryButtonText}>Zapłać</Text>
+                    <Text style={styles.primaryButtonText}>Zapłać wybrane</Text>
                   </Pressable>
                 </View>
+                <View style={styles.paymentActionRow}>
+                  <Text style={styles.remainingLabel}>
+                    Pozostało do zapłaty: {money(remainingAmount)}
+                  </Text>
+                  <Pressable
+                    disabled={remainingAmount === 0}
+                    style={[
+                      styles.primaryButton,
+                      remainingAmount === 0 && styles.disabledButton,
+                    ]}
+                    onPress={onPayFullBill}
+                  >
+                    <Text style={styles.primaryButtonText}>Opłać całość</Text>
+                  </Pressable>
+                </View>
+                {isBillPaid && (
+                  <Pressable
+                    style={[styles.primaryButton, styles.releaseButton]}
+                    onPress={onReleaseTable}
+                  >
+                    <Text style={styles.primaryButtonText}>Zwolnij stolik</Text>
+                  </Pressable>
+                )}
               </View>
             </ScrollView>
           </View>
@@ -290,35 +309,28 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 10,
   },
-  secondaryButton: {
-    backgroundColor: '#e6f6ff',
-    borderRadius: 12,
-    marginTop: 12,
-    padding: 10,
-  },
-  secondaryButtonText: {
-    color: '#0b7285',
-    fontWeight: '800',
-    textAlign: 'center',
-  },
   closeButton: {
     backgroundColor: '#edf2f7',
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    height: 44,
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  closeButtonText: { color: colors.text, fontWeight: '800' },
+  closeButtonText: {
+    color: colors.text,
+    fontSize: 34,
+    fontWeight: '800',
+    lineHeight: 38,
+  },
   modalBackdrop: {
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    backgroundColor: colors.surface,
     flex: 1,
-    justifyContent: 'flex-end',
   },
   modalWindow: {
     backgroundColor: colors.surface,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
     elevation: 6,
-    maxHeight: '88%',
+    flex: 1,
     shadowColor: colors.primary,
     shadowOpacity: 0.18,
     shadowRadius: 18,
@@ -389,6 +401,26 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   primaryButtonText: { color: '#fff', fontWeight: '800' },
+  paymentActionRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 10,
+  },
+  remainingLabel: {
+    color: colors.text,
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  paidMessage: {
+    color: '#0b7285',
+    fontSize: 15,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  releaseButton: { alignItems: 'center', marginTop: 14 },
   disabledButton: { backgroundColor: '#9fb3c8' },
   flexOne: { flex: 1 },
 });

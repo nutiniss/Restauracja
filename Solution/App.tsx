@@ -120,6 +120,46 @@ function App(): React.JSX.Element {
     );
   };
 
+  const updateOrderPaymentState = (
+    current: RestaurantStore,
+    order: Order,
+    paidIds: number[],
+    payment: Payment,
+  ): RestaurantStore => {
+    const orderItems = current.orderItems.map(item =>
+      paidIds.includes(item.id) ? item.markPaid(payment.id) : item,
+    );
+    const hasUnpaidItems = orderItems.some(
+      item =>
+        item.orderId === order.id &&
+        !item.isPaid &&
+        item.status !== OrderItemStatus.Cancelled,
+    );
+    const orderStatus = hasUnpaidItems
+      ? OrderStatus.PartiallyPaid
+      : OrderStatus.Paid;
+    const tableStatus = hasUnpaidItems
+      ? TableStatus.PartiallyPaid
+      : TableStatus.Paid;
+
+    return {
+      ...current,
+      payments: [...current.payments, payment],
+      orderItems,
+      orders: current.orders.map(currentOrder =>
+        currentOrder.id === order.id
+          ? currentOrder.updateStatus(
+              orderStatus,
+              hasUnpaidItems ? undefined : 'teraz',
+            )
+          : currentOrder,
+      ),
+      tables: current.tables.map(table =>
+        table.id === order.tableId ? table.updateStatus(tableStatus) : table,
+      ),
+    };
+  };
+
   const paySelectedItems = () => {
     if (!selectedOrder || selectedItemIds.length === 0) {
       return;
@@ -148,42 +188,52 @@ function App(): React.JSX.Element {
         'teraz',
       );
       const paidIds = itemsToPay.map(item => item.id);
-      const orderItems = current.orderItems.map(item =>
-        paidIds.includes(item.id) ? item.markPaid(newPaymentId) : item,
-      );
-      const hasUnpaidItems = orderItems.some(
-        item =>
-          item.orderId === selectedOrder.id &&
-          !item.isPaid &&
-          item.status !== OrderItemStatus.Cancelled,
-      );
-      const orderStatus = hasUnpaidItems
-        ? OrderStatus.PartiallyPaid
-        : OrderStatus.Paid;
-      const tableStatus = hasUnpaidItems
-        ? TableStatus.PartiallyPaid
-        : TableStatus.Paid;
 
-      return {
-        ...current,
-        payments: [...current.payments, payment],
-        orderItems,
-        orders: current.orders.map(order =>
-          order.id === selectedOrder.id
-            ? order.updateStatus(
-                orderStatus,
-                hasUnpaidItems ? undefined : 'teraz',
-              )
-            : order,
-        ),
-        tables: current.tables.map(table =>
-          table.id === selectedOrder.tableId
-            ? table.updateStatus(tableStatus)
-            : table,
-        ),
-      };
+      return updateOrderPaymentState(current, selectedOrder, paidIds, payment);
     });
     setSelectedItemIds([]);
+  };
+
+  const payFullBill = () => {
+    if (!selectedOrder) {
+      return;
+    }
+
+    setStore(current => {
+      const itemsToPay = current.orderItems.filter(
+        item => item.orderId === selectedOrder.id && !item.isPaid,
+      );
+      const amount = itemsToPay.reduce((sum, item) => sum + item.total, 0);
+      if (amount === 0) {
+        return current;
+      }
+
+      const newPaymentId =
+        Math.max(...current.payments.map(payment => payment.id), 0) + 1;
+      const payment = new Payment(
+        newPaymentId,
+        selectedOrder.id,
+        paymentMethodId,
+        amount,
+        0,
+        'teraz',
+      );
+      const paidIds = itemsToPay.map(item => item.id);
+
+      return updateOrderPaymentState(current, selectedOrder, paidIds, payment);
+    });
+    setSelectedItemIds([]);
+  };
+
+  const releaseSelectedTable = () => {
+    setStore(current => ({
+      ...current,
+      tables: current.tables.map(table =>
+        table.id === selectedTable.id ? table.release() : table,
+      ),
+    }));
+    setSelectedItemIds([]);
+    setIsTableDetailsOpen(false);
   };
 
   return (
@@ -202,11 +252,12 @@ function App(): React.JSX.Element {
           getMenuItem={getMenuItem}
           getOrderTotal={getOrderTotal}
           getPaidTotal={getPaidTotal}
-          onSelectTable={setSelectedTableId}
           onOpenOrder={openOrder}
           onTogglePaymentItem={togglePaymentItem}
           onChangePaymentMethod={setPaymentMethodId}
           onPaySelectedItems={paySelectedItems}
+          onPayFullBill={payFullBill}
+          onReleaseTable={releaseSelectedTable}
           onCloseDetails={() => setIsTableDetailsOpen(false)}
           onAddOrderItem={goToOrderItemSelection}
         />
