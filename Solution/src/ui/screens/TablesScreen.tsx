@@ -27,7 +27,6 @@ export function TablesScreen({
   selectedOrder,
   orderItems,
   paymentMethods,
-  waiters,
   paymentMethodId,
   selectedItemIds,
   isDetailsOpen,
@@ -38,7 +37,6 @@ export function TablesScreen({
   onOpenOrder,
   onTogglePaymentItem,
   onChangePaymentMethod,
-  onAssignWaiter,
   onPaySelectedItems,
   onPayFullBill,
   onReleaseTable,
@@ -50,7 +48,6 @@ export function TablesScreen({
   selectedOrder?: Order;
   orderItems: OrderItem[];
   paymentMethods: PaymentMethod[];
-  waiters: Waiter[];
   paymentMethodId: number;
   selectedItemIds: number[];
   isDetailsOpen: boolean;
@@ -61,7 +58,6 @@ export function TablesScreen({
   onOpenOrder: (table: RestaurantTable) => void;
   onTogglePaymentItem: (itemId: number) => void;
   onChangePaymentMethod: (methodId: number) => void;
-  onAssignWaiter: (waiterId: number) => void;
   onPaySelectedItems: () => void;
   onPayFullBill: () => void;
   onReleaseTable: () => void;
@@ -92,7 +88,10 @@ export function TablesScreen({
           return (
             <Pressable
               key={table.id}
-              style={styles.tableCard}
+              style={[
+                styles.tableCard,
+                selectedTable.id === table.id && styles.selectedCard,
+              ]}
               onPress={() => onOpenOrder(table)}
             >
               <View style={styles.rowBetween}>
@@ -130,11 +129,7 @@ export function TablesScreen({
                     {getWaiter(selectedOrder?.waiterId)?.fullName ?? 'brak'}
                   </Text>
                 </View>
-                <Pressable
-                  hitSlop={12}
-                  style={styles.closeButton}
-                  onPress={onCloseDetails}
-                >
+                <Pressable style={styles.closeButton} onPress={onCloseDetails}>
                   <Text style={styles.closeButtonText}>×</Text>
                 </Pressable>
               </View>
@@ -149,38 +144,6 @@ export function TablesScreen({
                 >
                   <Text style={styles.primaryButtonText}>Dodaj pozycję</Text>
                 </Pressable>
-              </View>
-
-              <View style={styles.waiterCard}>
-                <Text style={styles.sectionHeading}>Kelner</Text>
-                <Text style={styles.cardMuted}>
-                  Wybierz osobę odpowiedzialną za obsługę tego stolika.
-                </Text>
-                <View style={styles.methodRow}>
-                  {waiters.map(waiter => (
-                    <Pressable
-                      key={waiter.id}
-                      disabled={!waiter.isActive}
-                      style={[
-                        styles.chip,
-                        selectedTable.waiterId === waiter.id &&
-                          styles.chipActive,
-                        !waiter.isActive && styles.disabledChip,
-                      ]}
-                      onPress={() => onAssignWaiter(waiter.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          selectedTable.waiterId === waiter.id &&
-                            styles.chipTextActive,
-                        ]}
-                      >
-                        {waiter.fullName}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
               </View>
 
               {!selectedOrder && (
@@ -325,6 +288,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     width: '48%',
   },
+  selectedCard: { borderColor: colors.primaryLight, borderWidth: 2 },
   rowBetween: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -372,12 +336,6 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
   },
   modalContent: { padding: 16, paddingBottom: 28 },
-  waiterCard: {
-    backgroundColor: colors.background,
-    borderRadius: 18,
-    marginTop: 16,
-    padding: 14,
-  },
   paymentCard: {
     backgroundColor: colors.background,
     borderRadius: 18,
@@ -436,7 +394,6 @@ const styles = StyleSheet.create({
   },
   chipText: { color: '#334e68', fontWeight: '800' },
   chipTextActive: { color: '#fff' },
-  disabledChip: { opacity: 0.45 },
   primaryButton: {
     backgroundColor: colors.primaryLight,
     borderRadius: 14,

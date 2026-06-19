@@ -30,7 +30,6 @@ function App(): React.JSX.Element {
   const [paymentMethodId, setPaymentMethodId] = useState(1);
   const [search, setSearch] = useState('');
   const [isTableDetailsOpen, setIsTableDetailsOpen] = useState(false);
-  const [menuSourceTableId, setMenuSourceTableId] = useState<number>();
 
   const selectedTable =
     store.tables.find(table => table.id === selectedTableId) ?? store.tables[0];
@@ -87,80 +86,30 @@ function App(): React.JSX.Element {
     setIsTableDetailsOpen(true);
   };
 
-  const addItemToOrder = (
-    menuItem: MenuItem,
-    tableId: number,
-    quantity: number,
-    notes?: string,
-  ) => {
-    if (!menuItem.isAvailable || quantity <= 0) {
+  const addItemToOrder = (menuItem: MenuItem) => {
+    if (!selectedOrder || !menuItem.isAvailable) {
       return;
     }
 
     setStore(current => {
-      const table = current.tables.find(
-        currentTable => currentTable.id === tableId,
-      );
-      if (!table) {
-        return current;
-      }
-
-      const orderId =
-        table.orderId ??
-        Math.max(...current.orders.map(order => order.id), 0) + 1;
-      const waiterId = table.waiterId ?? current.waiters[0].id;
       const newItemId =
         Math.max(...current.orderItems.map(item => item.id), 0) + 1;
       const newItem = new OrderItem(
         newItemId,
-        orderId,
+        selectedOrder.id,
         menuItem.id,
-        quantity,
+        1,
         menuItem.price,
         OrderItemStatus.Ordered,
-        undefined,
-        notes,
       );
-      const orders = table.orderId
-        ? current.orders
-        : [
-            ...current.orders,
-            new Order(orderId, table.id, waiterId, 'teraz', OrderStatus.Open),
-          ];
 
-      return {
-        ...current,
-        orders,
-        orderItems: [...current.orderItems, newItem],
-        tables: current.tables.map(currentTable =>
-          currentTable.id === table.id && !table.orderId
-            ? currentTable.assignOrder(orderId, waiterId)
-            : currentTable,
-        ),
-      };
+      return { ...current, orderItems: [...current.orderItems, newItem] };
     });
-    setSelectedTableId(tableId);
   };
 
   const goToOrderItemSelection = () => {
-    setMenuSourceTableId(selectedTable.id);
     setIsTableDetailsOpen(false);
     setActiveTab('menu');
-  };
-
-  const backToOrderDetails = () => {
-    if (menuSourceTableId) {
-      setSelectedTableId(menuSourceTableId);
-      setIsTableDetailsOpen(true);
-    }
-    setActiveTab('tables');
-  };
-
-  const changeTab = (tab: AppTab) => {
-    if (tab === 'menu') {
-      setMenuSourceTableId(undefined);
-    }
-    setActiveTab(tab);
   };
 
   const togglePaymentItem = (itemId: number) => {
@@ -209,18 +158,6 @@ function App(): React.JSX.Element {
         table.id === order.tableId ? table.updateStatus(tableStatus) : table,
       ),
     };
-  };
-
-  const assignWaiterToSelectedTable = (waiterId: number) => {
-    setStore(current => ({
-      ...current,
-      tables: current.tables.map(table =>
-        table.id === selectedTable.id ? table.assignWaiter(waiterId) : table,
-      ),
-      orders: current.orders.map(order =>
-        order.id === selectedOrder?.id ? order.assignWaiter(waiterId) : order,
-      ),
-    }));
   };
 
   const paySelectedItems = () => {
@@ -300,7 +237,7 @@ function App(): React.JSX.Element {
   };
 
   return (
-    <AppShell activeTab={activeTab} onChangeTab={changeTab}>
+    <AppShell activeTab={activeTab} onChangeTab={setActiveTab}>
       {activeTab === 'tables' && (
         <TablesScreen
           tables={store.tables}
@@ -308,7 +245,6 @@ function App(): React.JSX.Element {
           selectedOrder={selectedOrder}
           orderItems={selectedOrderItems}
           paymentMethods={store.paymentMethods}
-          waiters={store.waiters}
           paymentMethodId={paymentMethodId}
           selectedItemIds={selectedItemIds}
           isDetailsOpen={isTableDetailsOpen}
@@ -319,14 +255,10 @@ function App(): React.JSX.Element {
           onOpenOrder={openOrder}
           onTogglePaymentItem={togglePaymentItem}
           onChangePaymentMethod={setPaymentMethodId}
-          onAssignWaiter={assignWaiterToSelectedTable}
           onPaySelectedItems={paySelectedItems}
           onPayFullBill={payFullBill}
           onReleaseTable={releaseSelectedTable}
-          onCloseDetails={() => {
-            setIsTableDetailsOpen(false);
-            setSelectedItemIds([]);
-          }}
+          onCloseDetails={() => setIsTableDetailsOpen(false)}
           onAddOrderItem={goToOrderItemSelection}
         />
       )}
@@ -334,14 +266,11 @@ function App(): React.JSX.Element {
         <MenuScreen
           categories={store.categories}
           menuItems={store.menuItems}
-          tables={store.tables}
           selectedCategoryId={selectedCategoryId}
           search={search}
-          sourceTableId={menuSourceTableId}
           onSelectCategory={setSelectedCategoryId}
           onChangeSearch={setSearch}
           onAddItem={addItemToOrder}
-          onBackToOrder={backToOrderDetails}
         />
       )}
       {activeTab === 'waiters' && (
