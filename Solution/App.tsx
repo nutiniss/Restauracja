@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { restaurantApi } from './src/api/restaurantApi';
 import {
+  MenuCategory,
   MenuItem,
   Order,
   OrderItem,
   Payment,
+  PaymentMethod,
   RestaurantTable,
+  Waiter,
 } from './src/domain/entities';
 import {
   OrderItemStatus,
@@ -13,7 +16,8 @@ import {
   TableStatus,
 } from './src/domain/enums/RestaurantEnums';
 import { RestaurantStore } from './src/domain/repositories/RestaurantStore';
-import { AppShell, AppTab } from './src/ui/layout/AppShell';
+import { AppMode, AppShell, AppTab } from './src/ui/layout/AppShell';
+import { AdminScreen } from './src/ui/screens/AdminScreen';
 import { HistoryScreen } from './src/ui/screens/HistoryScreen';
 import { MenuScreen } from './src/ui/screens/MenuScreen';
 import { TablesScreen } from './src/ui/screens/TablesScreen';
@@ -22,6 +26,7 @@ import { WaitersScreen } from './src/ui/screens/WaitersScreen';
 const initialStore = restaurantApi.seedStore();
 
 function App(): React.JSX.Element {
+  const [mode, setMode] = useState<AppMode>('service');
   const [activeTab, setActiveTab] = useState<AppTab>('tables');
   const [store, setStore] = useState<RestaurantStore>(initialStore);
   const [selectedTableId, setSelectedTableId] = useState(2);
@@ -49,8 +54,19 @@ function App(): React.JSX.Element {
     syncStore(restaurantApi.getStore);
   }, []);
 
+  const activeTables = store.tables.filter(table => table.isActive);
+  const activeCategories = store.categories.filter(
+    category => category.isActive,
+  );
+  const activeMenuItems = store.menuItems.filter(item => item.isAvailable);
+  const activePaymentMethods = store.paymentMethods.filter(
+    method => method.isActive,
+  );
+  const activeWaiters = store.waiters.filter(waiter => waiter.isActive);
   const selectedTable =
-    store.tables.find(table => table.id === selectedTableId) ?? store.tables[0];
+    activeTables.find(table => table.id === selectedTableId) ??
+    activeTables[0] ??
+    store.tables[0];
   const selectedOrder = store.orders.find(
     order => order.id === selectedTable.orderId,
   );
@@ -115,7 +131,9 @@ function App(): React.JSX.Element {
       return;
     }
 
-    syncStore(() => restaurantApi.addItem(tableId, menuItem.id, quantity, notes));
+    syncStore(() =>
+      restaurantApi.addItem(tableId, menuItem.id, quantity, notes),
+    );
 
     setStore(current => {
       const table = current.tables.find(
@@ -176,7 +194,20 @@ function App(): React.JSX.Element {
     setActiveTab('tables');
   };
 
+  const changeMode = (nextMode: AppMode) => {
+    setMode(nextMode);
+    setIsTableDetailsOpen(false);
+    setSelectedItemIds([]);
+    setMenuSourceTableId(undefined);
+  };
+
   const changeTab = (tab: AppTab) => {
+    if (mode === 'admin' && tab !== 'admin') {
+      setMode('service');
+    }
+    if (mode === 'service' && tab === 'admin') {
+      setMode('admin');
+    }
     if (tab === 'menu') {
       setMenuSourceTableId(undefined);
     }
@@ -251,7 +282,13 @@ function App(): React.JSX.Element {
       return;
     }
 
-    syncStore(() => restaurantApi.payOrder(selectedOrder.id, paymentMethodId, selectedItemIds));
+    syncStore(() =>
+      restaurantApi.payOrder(
+        selectedOrder.id,
+        paymentMethodId,
+        selectedItemIds,
+      ),
+    );
 
     setStore(current => {
       const itemsToPay = current.orderItems.filter(
@@ -315,6 +352,144 @@ function App(): React.JSX.Element {
     setSelectedItemIds([]);
   };
 
+  const saveTable = (table: RestaurantTable) => {
+    setStore(current => ({
+      ...current,
+      tables: current.tables.some(currentTable => currentTable.id === table.id)
+        ? current.tables.map(currentTable =>
+            currentTable.id === table.id ? table : currentTable,
+          )
+        : [...current.tables, table],
+    }));
+    setSelectedTableId(table.id);
+  };
+
+  const saveCategory = (category: MenuCategory) => {
+    setStore(current => ({
+      ...current,
+      categories: current.categories.some(
+        currentCategory => currentCategory.id === category.id,
+      )
+        ? current.categories.map(currentCategory =>
+            currentCategory.id === category.id ? category : currentCategory,
+          )
+        : [...current.categories, category],
+    }));
+    setSelectedCategoryId(category.id);
+  };
+
+  const saveMenuItemFromAdmin = (menuItem: MenuItem) => {
+    setStore(current => ({
+      ...current,
+      menuItems: current.menuItems.some(item => item.id === menuItem.id)
+        ? current.menuItems.map(item =>
+            item.id === menuItem.id ? menuItem : item,
+          )
+        : [...current.menuItems, menuItem],
+    }));
+    setSelectedCategoryId(menuItem.categoryId);
+  };
+
+  const savePaymentMethod = (paymentMethod: PaymentMethod) => {
+    setStore(current => ({
+      ...current,
+      paymentMethods: current.paymentMethods.some(
+        method => method.id === paymentMethod.id,
+      )
+        ? current.paymentMethods.map(method =>
+            method.id === paymentMethod.id ? paymentMethod : method,
+          )
+        : [...current.paymentMethods, paymentMethod],
+    }));
+    setPaymentMethodId(paymentMethod.id);
+  };
+
+  const saveWaiter = (waiter: Waiter) => {
+    setStore(current => ({
+      ...current,
+      waiters: current.waiters.some(
+        currentWaiter => currentWaiter.id === waiter.id,
+      )
+        ? current.waiters.map(currentWaiter =>
+            currentWaiter.id === waiter.id ? waiter : currentWaiter,
+          )
+        : [...current.waiters, waiter],
+    }));
+  };
+
+  const deactivateTable = (tableId: number) => {
+    setStore(current => ({
+      ...current,
+      tables: current.tables.map(table =>
+        table.id === tableId ? table.deactivate() : table,
+      ),
+    }));
+  };
+
+  const deactivateCategory = (categoryId: number) => {
+    setStore(current => ({
+      ...current,
+      categories: current.categories.map(category =>
+        category.id === categoryId
+          ? new MenuCategory(
+              category.id,
+              category.name,
+              category.description,
+              category.displayOrder,
+              false,
+            )
+          : category,
+      ),
+    }));
+  };
+
+  const deactivateMenuItem = (menuItemId: number) => {
+    setStore(current => ({
+      ...current,
+      menuItems: current.menuItems.map(item =>
+        item.id === menuItemId
+          ? new MenuItem(
+              item.id,
+              item.categoryId,
+              item.name,
+              item.description,
+              item.price,
+              false,
+              item.imageUrl,
+            )
+          : item,
+      ),
+    }));
+  };
+
+  const deactivatePaymentMethod = (methodId: number) => {
+    setStore(current => ({
+      ...current,
+      paymentMethods: current.paymentMethods.map(method =>
+        method.id === methodId
+          ? new PaymentMethod(method.id, method.name, false)
+          : method,
+      ),
+    }));
+  };
+
+  const deactivateWaiter = (waiterId: number) => {
+    setStore(current => ({
+      ...current,
+      waiters: current.waiters.map(waiter =>
+        waiter.id === waiterId
+          ? new Waiter(
+              waiter.id,
+              waiter.firstName,
+              waiter.lastName,
+              waiter.code,
+              false,
+            )
+          : waiter,
+      ),
+    }));
+  };
+
   const releaseSelectedTable = () => {
     syncStore(() => restaurantApi.releaseTable(selectedTable.id));
     setStore(current => ({
@@ -328,15 +503,21 @@ function App(): React.JSX.Element {
   };
 
   return (
-    <AppShell activeTab={activeTab} apiStatus={apiStatus} onChangeTab={changeTab}>
+    <AppShell
+      activeTab={activeTab}
+      mode={mode}
+      apiStatus={apiStatus}
+      onChangeMode={changeMode}
+      onChangeTab={changeTab}
+    >
       {activeTab === 'tables' && (
         <TablesScreen
-          tables={store.tables}
+          tables={activeTables}
           selectedTable={selectedTable}
           selectedOrder={selectedOrder}
           orderItems={selectedOrderItems}
-          paymentMethods={store.paymentMethods}
-          waiters={store.waiters}
+          paymentMethods={activePaymentMethods}
+          waiters={activeWaiters}
           paymentMethodId={paymentMethodId}
           selectedItemIds={selectedItemIds}
           isDetailsOpen={isTableDetailsOpen}
@@ -360,9 +541,9 @@ function App(): React.JSX.Element {
       )}
       {activeTab === 'menu' && (
         <MenuScreen
-          categories={store.categories}
-          menuItems={store.menuItems}
-          tables={store.tables}
+          categories={activeCategories}
+          menuItems={activeMenuItems}
+          tables={activeTables}
           selectedCategoryId={selectedCategoryId}
           search={search}
           sourceTableId={menuSourceTableId}
@@ -374,6 +555,25 @@ function App(): React.JSX.Element {
       )}
       {activeTab === 'waiters' && (
         <WaitersScreen waiters={store.waiters} tables={store.tables} />
+      )}
+      {activeTab === 'admin' && (
+        <AdminScreen
+          tables={store.tables}
+          categories={store.categories}
+          menuItems={store.menuItems}
+          paymentMethods={store.paymentMethods}
+          waiters={store.waiters}
+          onSaveTable={saveTable}
+          onSaveCategory={saveCategory}
+          onSaveMenuItem={saveMenuItemFromAdmin}
+          onSavePaymentMethod={savePaymentMethod}
+          onSaveWaiter={saveWaiter}
+          onDeactivateTable={deactivateTable}
+          onDeactivateCategory={deactivateCategory}
+          onDeactivateMenuItem={deactivateMenuItem}
+          onDeactivatePaymentMethod={deactivatePaymentMethod}
+          onDeactivateWaiter={deactivateWaiter}
+        />
       )}
       {activeTab === 'history' && (
         <HistoryScreen

@@ -9,6 +9,7 @@ export class RestaurantTable {
     public readonly status: TableStatus = TableStatus.Free,
     public readonly waiterId?: number,
     public readonly orderId?: number,
+    public readonly isActive: boolean = true,
   ) {}
 
   assignOrder(orderId: number, waiterId: number): RestaurantTable {
@@ -20,6 +21,7 @@ export class RestaurantTable {
       TableStatus.Occupied,
       waiterId,
       orderId,
+      this.isActive,
     );
   }
 
@@ -32,6 +34,7 @@ export class RestaurantTable {
       this.status,
       waiterId,
       this.orderId,
+      this.isActive,
     );
   }
 
@@ -44,6 +47,7 @@ export class RestaurantTable {
       status,
       this.waiterId,
       this.orderId,
+      this.isActive,
     );
   }
 
@@ -54,6 +58,22 @@ export class RestaurantTable {
       this.seats,
       this.zone,
       TableStatus.Free,
+      undefined,
+      undefined,
+      this.isActive,
+    );
+  }
+
+  deactivate(): RestaurantTable {
+    return new RestaurantTable(
+      this.id,
+      this.number,
+      this.seats,
+      this.zone,
+      TableStatus.Free,
+      undefined,
+      undefined,
+      false,
     );
   }
 }
