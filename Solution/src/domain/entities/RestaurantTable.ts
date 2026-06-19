@@ -1,4 +1,4 @@
-import {TableStatus} from '../enums/RestaurantEnums';
+import { TableStatus } from '../enums/RestaurantEnums';
 
 export class RestaurantTable {
   constructor(
@@ -32,6 +32,16 @@ export class RestaurantTable {
       status,
       this.waiterId,
       this.orderId,
+    );
+  }
+
+  release(): RestaurantTable {
+    return new RestaurantTable(
+      this.id,
+      this.number,
+      this.seats,
+      this.zone,
+      TableStatus.Free,
     );
   }
 }
