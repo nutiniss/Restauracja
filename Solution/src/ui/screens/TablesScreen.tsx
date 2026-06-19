@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import {
@@ -62,8 +63,8 @@ export function TablesScreen({
   onTogglePaymentItem: (itemId: number) => void;
   onChangePaymentMethod: (methodId: number) => void;
   onAssignWaiter: (waiterId: number) => void;
-  onPaySelectedItems: () => void;
-  onPayFullBill: () => void;
+  onPaySelectedItems: (tipAmount?: number) => void;
+  onPayFullBill: (tipAmount?: number) => void;
   onReleaseTable: () => void;
   onCloseDetails: () => void;
   onAddOrderItem: () => void;
@@ -78,6 +79,21 @@ export function TablesScreen({
   const isBillPaid = Boolean(selectedOrder) && remainingAmount === 0;
   const assignedWaiter = getWaiter(selectedTable.waiterId);
   const [isWaiterModalOpen, setIsWaiterModalOpen] = useState(false);
+  const [tipValue, setTipValue] = useState('');
+  const tipAmount = Math.max(
+    Number.parseFloat(tipValue.replace(',', '.')) || 0,
+    0,
+  );
+
+  const paySelectedWithTip = () => {
+    onPaySelectedItems(tipAmount);
+    setTipValue('');
+  };
+
+  const payFullWithTip = () => {
+    onPayFullBill(tipAmount);
+    setTipValue('');
+  };
 
   const assignWaiterAndClose = (waiterId: number) => {
     onAssignWaiter(waiterId);
@@ -112,48 +128,54 @@ export function TablesScreen({
             </Pressable>
           </View>
 
-          <View style={styles.rowBetween}>
-            <Text style={styles.amount}>{money(remainingAmount)} do zapłaty</Text>
-            <Pressable style={styles.primaryButton} onPress={onAddOrderItem}>
-              <Text style={styles.primaryButtonText}>Dodaj pozycję</Text>
-            </Pressable>
+          <View style={styles.detailsSection}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.amount}>
+                {money(remainingAmount)} do zapłaty
+              </Text>
+              <Pressable style={styles.primaryButton} onPress={onAddOrderItem}>
+                <Text style={styles.primaryButtonText}>Dodaj pozycję</Text>
+              </Pressable>
+            </View>
           </View>
 
-          {!selectedOrder && (
-            <Text style={styles.emptyText}>
-              Ten stolik nie ma jeszcze otwartego zamówienia.
-            </Text>
-          )}
+          <View style={styles.detailsSection}>
+            {!selectedOrder && (
+              <Text style={styles.emptyText}>
+                Ten stolik nie ma jeszcze otwartego zamówienia.
+              </Text>
+            )}
 
-          {orderItems.map(item => {
-            const menuItem = getMenuItem(item.menuItemId);
-            const selected = selectedItemIds.includes(item.id);
+            {orderItems.map(item => {
+              const menuItem = getMenuItem(item.menuItemId);
+              const selected = selectedItemIds.includes(item.id);
 
-            return (
-              <Pressable
-                key={item.id}
-                disabled={item.isPaid}
-                style={[
-                  styles.orderRow,
-                  selected && styles.orderRowSelected,
-                  item.isPaid && styles.orderRowPaid,
-                ]}
-                onPress={() => onTogglePaymentItem(item.id)}
-              >
-                <View style={styles.flexOne}>
-                  <Text style={styles.orderName}>
-                    {menuItem?.name ?? 'Pozycja'} x{item.quantity}
-                  </Text>
-                  <Text style={styles.cardMuted}>
-                    {item.isPaid
-                      ? 'Opłacone'
-                      : 'Dotknij, aby zaznaczyć do płatności'}
-                  </Text>
-                </View>
-                <Text style={styles.orderAmount}>{money(item.total)}</Text>
-              </Pressable>
-            );
-          })}
+              return (
+                <Pressable
+                  key={item.id}
+                  disabled={item.isPaid}
+                  style={[
+                    styles.orderRow,
+                    selected && styles.orderRowSelected,
+                    item.isPaid && styles.orderRowPaid,
+                  ]}
+                  onPress={() => onTogglePaymentItem(item.id)}
+                >
+                  <View style={styles.flexOne}>
+                    <Text style={styles.orderName}>
+                      {menuItem?.name ?? 'Pozycja'} x{item.quantity}
+                    </Text>
+                    <Text style={styles.cardMuted}>
+                      {item.isPaid
+                        ? 'Opłacone'
+                        : 'Dotknij, aby zaznaczyć do płatności'}
+                    </Text>
+                  </View>
+                  <Text style={styles.orderAmount}>{money(item.total)}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
           <View style={styles.summaryBox}>
             <Text style={styles.cardText}>
@@ -165,7 +187,8 @@ export function TablesScreen({
             <Text style={styles.summaryAmount}>
               Pozostało:{' '}
               {money(
-                getOrderTotal(selectedOrder?.id) - getPaidTotal(selectedOrder?.id),
+                getOrderTotal(selectedOrder?.id) -
+                  getPaidTotal(selectedOrder?.id),
               )}
             </Text>
           </View>
@@ -193,18 +216,29 @@ export function TablesScreen({
                 </Pressable>
               ))}
             </View>
-            {isBillPaid && (
-              <Text style={styles.paidMessage}>Rachunek został opłacony.</Text>
-            )}
+            <View style={styles.tipRow}>
+              <Text style={styles.paymentLabel}>Napiwek</Text>
+              <TextInput
+                style={styles.tipInput}
+                value={tipValue}
+                onChangeText={setTipValue}
+                placeholder="0.00"
+                placeholderTextColor={colors.muted}
+                keyboardType="decimal-pad"
+              />
+            </View>
             <View style={styles.paymentActionRow}>
-              <Text style={styles.summaryAmount}>Wybrano: {money(selectedAmount)}</Text>
+              <Text style={styles.paymentLabel}>
+                Wybrano: {money(selectedAmount)}
+              </Text>
               <Pressable
                 disabled={selectedAmount === 0 || isBillPaid}
                 style={[
                   styles.primaryButton,
+                  styles.paymentButton,
                   (selectedAmount === 0 || isBillPaid) && styles.disabledButton,
                 ]}
-                onPress={onPaySelectedItems}
+                onPress={paySelectedWithTip}
               >
                 <Text style={styles.primaryButtonText}>Zapłać wybrane</Text>
               </Pressable>
@@ -217,9 +251,10 @@ export function TablesScreen({
                 disabled={remainingAmount === 0}
                 style={[
                   styles.primaryButton,
+                  styles.paymentButton,
                   remainingAmount === 0 && styles.disabledButton,
                 ]}
-                onPress={onPayFullBill}
+                onPress={payFullWithTip}
               >
                 <Text style={styles.primaryButtonText}>Opłać całość</Text>
               </Pressable>
@@ -247,8 +282,8 @@ export function TablesScreen({
                 <View style={styles.flexOne}>
                   <Text style={styles.sectionHeading}>Wybierz kelnera</Text>
                   <Text style={styles.cardMuted}>
-                    Stolik {selectedTable.number} zostanie przypisany do wybranej
-                    osoby.
+                    Stolik {selectedTable.number} zostanie przypisany do
+                    wybranej osoby.
                   </Text>
                 </View>
                 <Pressable
@@ -360,11 +395,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   tableNumber: { color: colors.text, fontSize: 18, fontWeight: '800' },
-  detailsActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-  },
+  detailsActions: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   backButton: {
     backgroundColor: colors.primary,
     borderRadius: 14,
@@ -401,7 +432,7 @@ const styles = StyleSheet.create({
     lineHeight: 38,
   },
   paymentCard: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderRadius: 18,
     marginTop: 16,
     padding: 14,
@@ -426,7 +457,7 @@ const styles = StyleSheet.create({
   orderName: { color: colors.text, fontSize: 15, fontWeight: '800' },
   orderAmount: { color: colors.text, fontSize: 15, fontWeight: '800' },
   summaryBox: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     marginTop: 14,
     padding: 14,
@@ -460,6 +491,7 @@ const styles = StyleSheet.create({
   chipTextActive: { color: '#fff' },
   disabledChip: { opacity: 0.45 },
   primaryButton: {
+    alignItems: 'center',
     backgroundColor: colors.primaryLight,
     borderRadius: 14,
     paddingHorizontal: 18,
@@ -467,12 +499,44 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { color: '#fff', fontWeight: '800' },
   secondaryButton: {
+    alignItems: 'center',
     backgroundColor: '#edf2f7',
+    flex: 1,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   secondaryButtonText: { color: colors.text, fontWeight: '800' },
+  paymentButton: { minWidth: 124 },
+  paymentLabel: {
+    color: colors.text,
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '900',
+    marginTop: 8,
+  },
+  tipRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 4,
+  },
+  tipInput: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    color: colors.text,
+    minWidth: 110,
+    padding: 12,
+    textAlign: 'right',
+  },
+  detailsSection: {
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    paddingBottom: 14,
+    marginBottom: 14,
+  },
   paymentActionRow: {
     alignItems: 'center',
     flexDirection: 'row',
