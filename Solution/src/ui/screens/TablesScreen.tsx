@@ -128,18 +128,16 @@ export function TablesScreen({
             </Pressable>
           </View>
 
-          <View style={styles.detailsSection}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.amount}>
-                {money(remainingAmount)} do zapłaty
-              </Text>
-              <Pressable style={styles.primaryButton} onPress={onAddOrderItem}>
-                <Text style={styles.primaryButtonText}>Dodaj pozycję</Text>
-              </Pressable>
-            </View>
+          <View style={styles.addItemSection}>
+            <Pressable
+              style={[styles.primaryButton, styles.addItemButton]}
+              onPress={onAddOrderItem}
+            >
+              <Text style={styles.primaryButtonText}>Dodaj pozycję</Text>
+            </Pressable>
           </View>
 
-          <View style={styles.detailsSection}>
+          <View style={styles.orderItemsSection}>
             {!selectedOrder && (
               <Text style={styles.emptyText}>
                 Ten stolik nie ma jeszcze otwartego zamówienia.
@@ -500,13 +498,18 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: '#fff', fontWeight: '800' },
   secondaryButton: {
     alignItems: 'center',
-    backgroundColor: '#edf2f7',
+    backgroundColor: colors.surface,
+    borderColor: colors.primaryLight,
+    borderWidth: 1,
     flex: 1,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
   },
-  secondaryButtonText: { color: colors.text, fontWeight: '800' },
+  secondaryButtonText: { color: colors.primary, fontWeight: '800' },
   paymentButton: { minWidth: 124 },
   paymentLabel: {
     color: colors.text,
@@ -522,14 +525,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   tipInput: {
-    backgroundColor: colors.background,
-    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderColor: colors.primaryLight,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     color: colors.text,
+    fontWeight: '800',
     minWidth: 110,
     padding: 12,
     textAlign: 'right',
+  },
+  addItemSection: {
+    paddingBottom: 14,
+    marginBottom: 4,
+  },
+  addItemButton: { width: '100%' },
+  orderItemsSection: {
+    marginBottom: 12,
   },
   detailsSection: {
     borderBottomColor: colors.border,
