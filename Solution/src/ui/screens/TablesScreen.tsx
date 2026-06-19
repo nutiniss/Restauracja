@@ -1,10 +1,23 @@
 import React from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
-import {MenuItem, Order, OrderItem, RestaurantTable, Waiter} from '../../domain/entities';
-import {PaymentMethod} from '../../domain/entities/PaymentMethod';
-import {SectionTitle} from '../components/SectionTitle';
-import {StatusBadge} from '../components/StatusBadge';
-import {colors} from '../theme/colors';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import {
+  MenuItem,
+  Order,
+  OrderItem,
+  RestaurantTable,
+  Waiter,
+} from '../../domain/entities';
+import { PaymentMethod } from '../../domain/entities/PaymentMethod';
+import { SectionTitle } from '../components/SectionTitle';
+import { StatusBadge } from '../components/StatusBadge';
+import { colors } from '../theme/colors';
 
 const money = (value: number) => `${value.toFixed(2)} zł`;
 
@@ -16,6 +29,7 @@ export function TablesScreen({
   paymentMethods,
   paymentMethodId,
   selectedItemIds,
+  isDetailsOpen,
   getWaiter,
   getMenuItem,
   getOrderTotal,
@@ -25,6 +39,8 @@ export function TablesScreen({
   onTogglePaymentItem,
   onChangePaymentMethod,
   onPaySelectedItems,
+  onCloseDetails,
+  onAddOrderItem,
 }: {
   tables: RestaurantTable[];
   selectedTable: RestaurantTable;
@@ -33,6 +49,7 @@ export function TablesScreen({
   paymentMethods: PaymentMethod[];
   paymentMethodId: number;
   selectedItemIds: number[];
+  isDetailsOpen: boolean;
   getWaiter: (id?: number) => Waiter | undefined;
   getMenuItem: (id: number) => MenuItem | undefined;
   getOrderTotal: (orderId?: number) => number;
@@ -42,6 +59,8 @@ export function TablesScreen({
   onTogglePaymentItem: (itemId: number) => void;
   onChangePaymentMethod: (methodId: number) => void;
   onPaySelectedItems: () => void;
+  onCloseDetails: () => void;
+  onAddOrderItem: () => void;
 }) {
   const selectedAmount = orderItems
     .filter(item => selectedItemIds.includes(item.id) && !item.isPaid)
@@ -49,122 +68,327 @@ export function TablesScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <SectionTitle title="Sala i stoliki" subtitle="Wybierz stolik, otwórz rachunek albo opłać wybrane pozycje." />
+      <SectionTitle
+        title="Sala i stoliki"
+        subtitle="Wybierz stolik, otwórz rachunek albo opłać wybrane pozycje."
+      />
       <View style={styles.tableGrid}>
         {tables.map(table => {
           const waiter = getWaiter(table.waiterId);
-          const remaining = getOrderTotal(table.orderId) - getPaidTotal(table.orderId);
+          const remaining =
+            getOrderTotal(table.orderId) - getPaidTotal(table.orderId);
 
           return (
             <Pressable
               key={table.id}
-              style={[styles.tableCard, selectedTable.id === table.id && styles.selectedCard]}
-              onPress={() => onSelectTable(table.id)}>
+              style={[
+                styles.tableCard,
+                selectedTable.id === table.id && styles.selectedCard,
+              ]}
+              onPress={() => onSelectTable(table.id)}
+            >
               <View style={styles.rowBetween}>
                 <Text style={styles.tableNumber}>Stolik {table.number}</Text>
                 <StatusBadge status={table.status} />
               </View>
-              <Text style={styles.cardMuted}>{table.zone} • {table.seats} miejsca</Text>
-              <Text style={styles.cardText}>Kelner: {waiter?.fullName ?? 'nieprzypisany'}</Text>
+              <Text style={styles.cardMuted}>
+                {table.zone} • {table.seats} miejsca
+              </Text>
+              <Text style={styles.cardText}>
+                Kelner: {waiter?.fullName ?? 'nieprzypisany'}
+              </Text>
               <Text style={styles.amount}>{money(remaining)} do zapłaty</Text>
-              <Pressable style={styles.secondaryButton} onPress={() => onOpenOrder(table)}>
-                <Text style={styles.secondaryButtonText}>{table.orderId ? 'Otwórz szczegóły' : 'Nowe zamówienie'}</Text>
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => onOpenOrder(table)}
+              >
+                <Text style={styles.secondaryButtonText}>
+                  {table.orderId ? 'Otwórz szczegóły' : 'Nowe zamówienie'}
+                </Text>
               </Pressable>
             </Pressable>
           );
         })}
       </View>
 
-      <View style={styles.detailsCard}>
-        <View style={styles.rowBetween}>
-          <View>
-            <Text style={styles.sectionHeading}>Rachunek stolika {selectedTable.number}</Text>
-            <Text style={styles.cardMuted}>Kelner: {getWaiter(selectedOrder?.waiterId)?.fullName ?? 'brak'}</Text>
-          </View>
-          <Text style={styles.amount}>{money(getOrderTotal(selectedOrder?.id) - getPaidTotal(selectedOrder?.id))}</Text>
-        </View>
-
-        {!selectedOrder && <Text style={styles.emptyText}>Ten stolik nie ma jeszcze otwartego zamówienia.</Text>}
-
-        {orderItems.map(item => {
-          const menuItem = getMenuItem(item.menuItemId);
-          const selected = selectedItemIds.includes(item.id);
-
-          return (
-            <Pressable
-              key={item.id}
-              disabled={item.isPaid}
-              style={[styles.orderRow, selected && styles.orderRowSelected, item.isPaid && styles.orderRowPaid]}
-              onPress={() => onTogglePaymentItem(item.id)}>
-              <View style={styles.flexOne}>
-                <Text style={styles.orderName}>{menuItem?.name ?? 'Pozycja'} x{item.quantity}</Text>
-                <Text style={styles.cardMuted}>{item.isPaid ? 'Opłacone' : 'Dotknij, aby zaznaczyć do płatności'}</Text>
+      <Modal
+        animationType="slide"
+        visible={isDetailsOpen}
+        transparent
+        onRequestClose={onCloseDetails}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalWindow}>
+            <ScrollView contentContainerStyle={styles.modalContent}>
+              <View style={styles.rowBetween}>
+                <View style={styles.flexOne}>
+                  <Text style={styles.sectionHeading}>
+                    Rachunek stolika {selectedTable.number}
+                  </Text>
+                  <Text style={styles.cardMuted}>
+                    Kelner:{' '}
+                    {getWaiter(selectedOrder?.waiterId)?.fullName ?? 'brak'}
+                  </Text>
+                </View>
+                <Pressable style={styles.closeButton} onPress={onCloseDetails}>
+                  <Text style={styles.closeButtonText}>Zamknij</Text>
+                </Pressable>
               </View>
-              <Text style={styles.orderAmount}>{money(item.total)}</Text>
-            </Pressable>
-          );
-        })}
 
-        <View style={styles.summaryBox}>
-          <Text style={styles.cardText}>Razem: {money(getOrderTotal(selectedOrder?.id))}</Text>
-          <Text style={styles.cardText}>Zapłacono: {money(getPaidTotal(selectedOrder?.id))}</Text>
-          <Text style={styles.summaryAmount}>Pozostało: {money(getOrderTotal(selectedOrder?.id) - getPaidTotal(selectedOrder?.id))}</Text>
-        </View>
-      </View>
+              <View style={styles.rowBetween}>
+                <Text style={styles.amount}>
+                  {money(
+                    getOrderTotal(selectedOrder?.id) -
+                      getPaidTotal(selectedOrder?.id),
+                  )}{' '}
+                  do zapłaty
+                </Text>
+                <Pressable
+                  style={styles.primaryButton}
+                  onPress={onAddOrderItem}
+                >
+                  <Text style={styles.primaryButtonText}>Dodaj pozycję</Text>
+                </Pressable>
+              </View>
 
-      <View style={styles.detailsCard}>
-        <Text style={styles.sectionHeading}>Płatność za wybrane pozycje</Text>
-        <Text style={styles.cardMuted}>Jedna pozycja rachunku może być opłacona tylko raz i tylko jedną płatnością.</Text>
-        <View style={styles.methodRow}>
-          {paymentMethods.map(method => (
-            <Pressable
-              key={method.id}
-              style={[styles.chip, paymentMethodId === method.id && styles.chipActive]}
-              onPress={() => onChangePaymentMethod(method.id)}>
-              <Text style={[styles.chipText, paymentMethodId === method.id && styles.chipTextActive]}>{method.name}</Text>
-            </Pressable>
-          ))}
+              {!selectedOrder && (
+                <Text style={styles.emptyText}>
+                  Ten stolik nie ma jeszcze otwartego zamówienia.
+                </Text>
+              )}
+
+              {orderItems.map(item => {
+                const menuItem = getMenuItem(item.menuItemId);
+                const selected = selectedItemIds.includes(item.id);
+
+                return (
+                  <Pressable
+                    key={item.id}
+                    disabled={item.isPaid}
+                    style={[
+                      styles.orderRow,
+                      selected && styles.orderRowSelected,
+                      item.isPaid && styles.orderRowPaid,
+                    ]}
+                    onPress={() => onTogglePaymentItem(item.id)}
+                  >
+                    <View style={styles.flexOne}>
+                      <Text style={styles.orderName}>
+                        {menuItem?.name ?? 'Pozycja'} x{item.quantity}
+                      </Text>
+                      <Text style={styles.cardMuted}>
+                        {item.isPaid
+                          ? 'Opłacone'
+                          : 'Dotknij, aby zaznaczyć do płatności'}
+                      </Text>
+                    </View>
+                    <Text style={styles.orderAmount}>{money(item.total)}</Text>
+                  </Pressable>
+                );
+              })}
+
+              <View style={styles.summaryBox}>
+                <Text style={styles.cardText}>
+                  Razem: {money(getOrderTotal(selectedOrder?.id))}
+                </Text>
+                <Text style={styles.cardText}>
+                  Zapłacono: {money(getPaidTotal(selectedOrder?.id))}
+                </Text>
+                <Text style={styles.summaryAmount}>
+                  Pozostało:{' '}
+                  {money(
+                    getOrderTotal(selectedOrder?.id) -
+                      getPaidTotal(selectedOrder?.id),
+                  )}
+                </Text>
+              </View>
+
+              <View style={styles.paymentCard}>
+                <Text style={styles.sectionHeading}>
+                  Płatność za wybrane pozycje
+                </Text>
+                <Text style={styles.cardMuted}>
+                  Jedna pozycja rachunku może być opłacona tylko raz i tylko
+                  jedną płatnością.
+                </Text>
+                <View style={styles.methodRow}>
+                  {paymentMethods.map(method => (
+                    <Pressable
+                      key={method.id}
+                      style={[
+                        styles.chip,
+                        paymentMethodId === method.id && styles.chipActive,
+                      ]}
+                      onPress={() => onChangePaymentMethod(method.id)}
+                    >
+                      <Text
+                        style={[
+                          styles.chipText,
+                          paymentMethodId === method.id &&
+                            styles.chipTextActive,
+                        ]}
+                      >
+                        {method.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.summaryAmount}>
+                    Wybrano: {money(selectedAmount)}
+                  </Text>
+                  <Pressable
+                    style={[
+                      styles.primaryButton,
+                      selectedAmount === 0 && styles.disabledButton,
+                    ]}
+                    onPress={onPaySelectedItems}
+                  >
+                    <Text style={styles.primaryButtonText}>Zapłać</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </ScrollView>
+          </View>
         </View>
-        <View style={styles.rowBetween}>
-          <Text style={styles.summaryAmount}>Wybrano: {money(selectedAmount)}</Text>
-          <Pressable style={[styles.primaryButton, selectedAmount === 0 && styles.disabledButton]} onPress={onPaySelectedItems}>
-            <Text style={styles.primaryButtonText}>Zapłać</Text>
-          </Pressable>
-        </View>
-      </View>
+      </Modal>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {padding: 16, paddingBottom: 104},
-  tableGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 12},
-  tableCard: {backgroundColor: colors.surface, borderRadius: 18, elevation: 2, padding: 14, shadowColor: colors.primary, shadowOpacity: 0.08, shadowRadius: 12, width: '48%'},
-  selectedCard: {borderColor: colors.primaryLight, borderWidth: 2},
-  rowBetween: {alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', gap: 12},
-  tableNumber: {color: colors.text, fontSize: 18, fontWeight: '800'},
-  cardMuted: {color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 4},
-  cardText: {color: '#334e68', fontSize: 14, marginTop: 8},
-  amount: {color: colors.text, fontSize: 17, fontWeight: '800', marginTop: 10},
-  secondaryButton: {backgroundColor: '#e6f6ff', borderRadius: 12, marginTop: 12, padding: 10},
-  secondaryButtonText: {color: '#0b7285', fontWeight: '800', textAlign: 'center'},
-  detailsCard: {backgroundColor: colors.surface, borderRadius: 22, elevation: 2, marginTop: 16, padding: 16, shadowColor: colors.primary, shadowOpacity: 0.08, shadowRadius: 14},
-  sectionHeading: {color: colors.text, fontSize: 20, fontWeight: '800'},
-  emptyText: {color: colors.muted, fontSize: 15, marginTop: 14},
-  orderRow: {alignItems: 'center', backgroundColor: '#f8fafc', borderRadius: 14, flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, padding: 12},
-  orderRowSelected: {backgroundColor: '#d0ebff', borderColor: colors.primaryLight, borderWidth: 1},
-  orderRowPaid: {backgroundColor: '#edf2f7', opacity: 0.65},
-  orderName: {color: colors.text, fontSize: 15, fontWeight: '800'},
-  orderAmount: {color: colors.text, fontSize: 15, fontWeight: '800'},
-  summaryBox: {backgroundColor: colors.background, borderRadius: 16, marginTop: 14, padding: 14},
-  summaryAmount: {color: colors.text, fontSize: 17, fontWeight: '900', marginTop: 8},
-  methodRow: {flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 14},
-  chip: {backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 999, borderWidth: 1, marginRight: 8, paddingHorizontal: 14, paddingVertical: 9},
-  chipActive: {backgroundColor: colors.primaryLight, borderColor: colors.primaryLight},
-  chipText: {color: '#334e68', fontWeight: '800'},
-  chipTextActive: {color: '#fff'},
-  primaryButton: {backgroundColor: colors.primaryLight, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 12},
-  primaryButtonText: {color: '#fff', fontWeight: '800'},
-  disabledButton: {backgroundColor: '#9fb3c8'},
-  flexOne: {flex: 1},
+  content: { padding: 16, paddingBottom: 104 },
+  tableGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  tableCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    elevation: 2,
+    padding: 14,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    width: '48%',
+  },
+  selectedCard: { borderColor: colors.primaryLight, borderWidth: 2 },
+  rowBetween: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  tableNumber: { color: colors.text, fontSize: 18, fontWeight: '800' },
+  cardMuted: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  cardText: { color: '#334e68', fontSize: 14, marginTop: 8 },
+  amount: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '800',
+    marginTop: 10,
+  },
+  secondaryButton: {
+    backgroundColor: '#e6f6ff',
+    borderRadius: 12,
+    marginTop: 12,
+    padding: 10,
+  },
+  secondaryButtonText: {
+    color: '#0b7285',
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  closeButton: {
+    backgroundColor: '#edf2f7',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  closeButtonText: { color: colors.text, fontWeight: '800' },
+  modalBackdrop: {
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalWindow: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    elevation: 6,
+    maxHeight: '88%',
+    shadowColor: colors.primary,
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+  },
+  modalContent: { padding: 16, paddingBottom: 28 },
+  paymentCard: {
+    backgroundColor: colors.background,
+    borderRadius: 18,
+    marginTop: 16,
+    padding: 14,
+  },
+  sectionHeading: { color: colors.text, fontSize: 20, fontWeight: '800' },
+  emptyText: { color: colors.muted, fontSize: 15, marginTop: 14 },
+  orderRow: {
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    padding: 12,
+  },
+  orderRowSelected: {
+    backgroundColor: '#d0ebff',
+    borderColor: colors.primaryLight,
+    borderWidth: 1,
+  },
+  orderRowPaid: { backgroundColor: '#edf2f7', opacity: 0.65 },
+  orderName: { color: colors.text, fontSize: 15, fontWeight: '800' },
+  orderAmount: { color: colors.text, fontSize: 15, fontWeight: '800' },
+  summaryBox: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    marginTop: 14,
+    padding: 14,
+  },
+  summaryAmount: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '900',
+    marginTop: 8,
+  },
+  methodRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginVertical: 14,
+  },
+  chip: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginRight: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  chipActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryLight,
+  },
+  chipText: { color: '#334e68', fontWeight: '800' },
+  chipTextActive: { color: '#fff' },
+  primaryButton: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  primaryButtonText: { color: '#fff', fontWeight: '800' },
+  disabledButton: { backgroundColor: '#9fb3c8' },
+  flexOne: { flex: 1 },
 });
