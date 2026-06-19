@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -64,6 +65,11 @@ export function AdminScreen({
   onDeactivateMenuItem,
   onDeactivatePaymentMethod,
   onDeactivateWaiter,
+  onActivateTable,
+  onActivateCategory,
+  onActivateMenuItem,
+  onActivatePaymentMethod,
+  onActivateWaiter,
 }: {
   tables: RestaurantTable[];
   categories: MenuCategory[];
@@ -80,10 +86,16 @@ export function AdminScreen({
   onDeactivateMenuItem: (itemId: number) => void;
   onDeactivatePaymentMethod: (methodId: number) => void;
   onDeactivateWaiter: (waiterId: number) => void;
+  onActivateTable: (tableId: number) => void;
+  onActivateCategory: (categoryId: number) => void;
+  onActivateMenuItem: (itemId: number) => void;
+  onActivatePaymentMethod: (methodId: number) => void;
+  onActivateWaiter: (waiterId: number) => void;
 }) {
   const [section, setSection] = useState<AdminSection>();
   const [editingId, setEditingId] = useState<number>();
   const [drafts, setDrafts] = useState(emptyDrafts);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
 
   const stats = useMemo(
     () => [
@@ -141,6 +153,12 @@ export function AdminScreen({
     }
     setEditingId(id);
     setDrafts(current => ({ ...current, [section]: nextDraft }));
+    setIsFormModalOpen(true);
+  };
+
+  const startAdd = () => {
+    resetForm();
+    setIsFormModalOpen(true);
   };
 
   const resetForm = () => {
@@ -249,6 +267,7 @@ export function AdminScreen({
     }
 
     resetForm();
+    setIsFormModalOpen(false);
   };
 
   if (!section) {
@@ -276,12 +295,17 @@ export function AdminScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Pressable
-        style={styles.backButton}
-        onPress={() => setSection(undefined)}
-      >
-        <Text style={styles.backButtonText}>Wróć do kafelków</Text>
-      </Pressable>
+      <View style={styles.headerActions}>
+        <Pressable
+          style={styles.backButton}
+          onPress={() => setSection(undefined)}
+        >
+          <Text style={styles.backButtonText}>Wróć</Text>
+        </Pressable>
+        <Pressable style={styles.primaryButton} onPress={startAdd}>
+          <Text style={styles.primaryButtonText}>Dodaj</Text>
+        </Pressable>
+      </View>
       <SectionTitle
         title={sectionTitle(section)}
         subtitle="Lista rekordów z możliwością dodawania, edycji i dezaktywacji."
@@ -299,23 +323,50 @@ export function AdminScreen({
         onDeactivateMenuItem,
         onDeactivatePaymentMethod,
         onDeactivateWaiter,
+        onActivateTable,
+        onActivateCategory,
+        onActivateMenuItem,
+        onActivatePaymentMethod,
+        onActivateWaiter,
       })}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>
-          {editingId ? 'Edytuj rekord' : 'Dodaj rekord'}
-        </Text>
-        {renderForm({ section, draft: draft ?? {}, categories, updateDraft })}
-        <View style={styles.actionRow}>
-          <Pressable style={styles.secondaryButton} onPress={resetForm}>
-            <Text style={styles.secondaryButtonText}>Wyczyść</Text>
-          </Pressable>
-          <Pressable style={styles.primaryButton} onPress={save}>
-            <Text style={styles.primaryButtonText}>
-              {editingId ? 'Zapisz zmiany' : 'Dodaj'}
-            </Text>
-          </Pressable>
+      <Modal
+        animationType="fade"
+        transparent
+        visible={isFormModalOpen}
+        onRequestClose={() => setIsFormModalOpen(false)}
+      >
+        <View style={styles.overlayBackdrop}>
+          <View style={styles.modalWindow}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.cardTitle}>
+                {editingId ? 'Edytuj rekord' : 'Dodaj rekord'}
+              </Text>
+              <Pressable
+                style={styles.closeButton}
+                onPress={() => setIsFormModalOpen(false)}
+              >
+                <Text style={styles.closeButtonText}>×</Text>
+              </Pressable>
+            </View>
+            {renderForm({
+              section,
+              draft: draft ?? {},
+              categories,
+              updateDraft,
+            })}
+            <View style={styles.actionRow}>
+              <Pressable style={styles.secondaryButton} onPress={resetForm}>
+                <Text style={styles.secondaryButtonText}>Wyczyść</Text>
+              </Pressable>
+              <Pressable style={styles.primaryButton} onPress={save}>
+                <Text style={styles.primaryButtonText}>
+                  {editingId ? 'Zapisz zmiany' : 'Dodaj'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
-      </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -343,6 +394,11 @@ function renderList({
   onDeactivateMenuItem,
   onDeactivatePaymentMethod,
   onDeactivateWaiter,
+  onActivateTable,
+  onActivateCategory,
+  onActivateMenuItem,
+  onActivatePaymentMethod,
+  onActivateWaiter,
 }: {
   section: AdminSection;
   tables: RestaurantTable[];
@@ -356,6 +412,11 @@ function renderList({
   onDeactivateMenuItem: (id: number) => void;
   onDeactivatePaymentMethod: (id: number) => void;
   onDeactivateWaiter: (id: number) => void;
+  onActivateTable: (id: number) => void;
+  onActivateCategory: (id: number) => void;
+  onActivateMenuItem: (id: number) => void;
+  onActivatePaymentMethod: (id: number) => void;
+  onActivateWaiter: (id: number) => void;
 }) {
   const rows = {
     tables: tables.map((table: RestaurantTable) => ({
@@ -371,6 +432,7 @@ function renderList({
         zone: table.zone,
       },
       deactivate: () => onDeactivateTable(table.id),
+      activate: () => onActivateTable(table.id),
     })),
     items: menuItems.map((item: MenuItem) => ({
       id: item.id,
@@ -386,6 +448,7 @@ function renderList({
         categoryId: String(item.categoryId),
       },
       deactivate: () => onDeactivateMenuItem(item.id),
+      activate: () => onActivateMenuItem(item.id),
     })),
     categories: categories.map((category: MenuCategory) => ({
       id: category.id,
@@ -396,6 +459,7 @@ function renderList({
       inactive: !category.isActive,
       draft: { name: category.name, description: category.description },
       deactivate: () => onDeactivateCategory(category.id),
+      activate: () => onActivateCategory(category.id),
     })),
     payments: paymentMethods.map((method: PaymentMethod) => ({
       id: method.id,
@@ -404,6 +468,7 @@ function renderList({
       inactive: !method.isActive,
       draft: { name: method.name },
       deactivate: () => onDeactivatePaymentMethod(method.id),
+      activate: () => onActivatePaymentMethod(method.id),
     })),
     waiters: waiters.map((waiter: Waiter) => ({
       id: waiter.id,
@@ -418,6 +483,7 @@ function renderList({
         code: waiter.code,
       },
       deactivate: () => onDeactivateWaiter(waiter.id),
+      activate: () => onActivateWaiter(waiter.id),
     })),
   }[section];
 
@@ -437,11 +503,12 @@ function renderList({
         <Text style={styles.secondaryButtonText}>Edytuj</Text>
       </Pressable>
       <Pressable
-        disabled={row.inactive}
-        style={[styles.dangerButton, row.inactive && styles.disabledButton]}
-        onPress={row.deactivate}
+        style={row.inactive ? styles.primaryButton : styles.dangerButton}
+        onPress={row.inactive ? row.activate : row.deactivate}
       >
-        <Text style={styles.primaryButtonText}>Dezaktywuj</Text>
+        <Text style={styles.primaryButtonText}>
+          {row.inactive ? 'Aktywuj' : 'Dezaktywuj'}
+        </Text>
       </Pressable>
     </View>
   ));
@@ -587,7 +654,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 12,
   },
   statCard: {
     backgroundColor: colors.surface,
@@ -601,6 +667,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     marginTop: 2,
+  },
+  headerActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   backButton: {
     alignSelf: 'flex-start',
@@ -646,6 +718,39 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   actionRow: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end' },
+  overlayBackdrop: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 16,
+  },
+  modalWindow: {
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    gap: 10,
+    padding: 18,
+    width: '100%',
+  },
+  modalHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  closeButton: {
+    alignItems: 'center',
+    backgroundColor: '#edf2f7',
+    borderRadius: 12,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  closeButtonText: {
+    color: colors.text,
+    fontSize: 30,
+    fontWeight: '800',
+    lineHeight: 34,
+  },
   primaryButton: {
     alignItems: 'center',
     backgroundColor: colors.primaryLight,

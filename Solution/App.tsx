@@ -277,7 +277,7 @@ function App(): React.JSX.Element {
     }));
   };
 
-  const paySelectedItems = () => {
+  const paySelectedItems = (tipAmount = 0) => {
     if (!selectedOrder || selectedItemIds.length === 0) {
       return;
     }
@@ -309,7 +309,7 @@ function App(): React.JSX.Element {
         selectedOrder.id,
         paymentMethodId,
         amount,
-        0,
+        tipAmount,
         'teraz',
       );
       const paidIds = itemsToPay.map(item => item.id);
@@ -319,7 +319,7 @@ function App(): React.JSX.Element {
     setSelectedItemIds([]);
   };
 
-  const payFullBill = () => {
+  const payFullBill = (tipAmount = 0) => {
     if (!selectedOrder) {
       return;
     }
@@ -342,7 +342,7 @@ function App(): React.JSX.Element {
         selectedOrder.id,
         paymentMethodId,
         amount,
-        0,
+        tipAmount,
         'teraz',
       );
       const paidIds = itemsToPay.map(item => item.id);
@@ -414,6 +414,90 @@ function App(): React.JSX.Element {
             currentWaiter.id === waiter.id ? waiter : currentWaiter,
           )
         : [...current.waiters, waiter],
+    }));
+  };
+
+  const activateTable = (tableId: number) => {
+    setStore(current => ({
+      ...current,
+      tables: current.tables.map(table =>
+        table.id === tableId
+          ? new RestaurantTable(
+              table.id,
+              table.number,
+              table.seats,
+              table.zone,
+              table.status,
+              table.waiterId,
+              table.orderId,
+              true,
+            )
+          : table,
+      ),
+    }));
+  };
+
+  const activateCategory = (categoryId: number) => {
+    setStore(current => ({
+      ...current,
+      categories: current.categories.map(category =>
+        category.id === categoryId
+          ? new MenuCategory(
+              category.id,
+              category.name,
+              category.description,
+              category.displayOrder,
+              true,
+            )
+          : category,
+      ),
+    }));
+  };
+
+  const activateMenuItem = (menuItemId: number) => {
+    setStore(current => ({
+      ...current,
+      menuItems: current.menuItems.map(item =>
+        item.id === menuItemId
+          ? new MenuItem(
+              item.id,
+              item.categoryId,
+              item.name,
+              item.description,
+              item.price,
+              true,
+              item.imageUrl,
+            )
+          : item,
+      ),
+    }));
+  };
+
+  const activatePaymentMethod = (methodId: number) => {
+    setStore(current => ({
+      ...current,
+      paymentMethods: current.paymentMethods.map(method =>
+        method.id === methodId
+          ? new PaymentMethod(method.id, method.name, true)
+          : method,
+      ),
+    }));
+  };
+
+  const activateWaiter = (waiterId: number) => {
+    setStore(current => ({
+      ...current,
+      waiters: current.waiters.map(waiter =>
+        waiter.id === waiterId
+          ? new Waiter(
+              waiter.id,
+              waiter.firstName,
+              waiter.lastName,
+              waiter.code,
+              true,
+            )
+          : waiter,
+      ),
     }));
   };
 
@@ -573,6 +657,11 @@ function App(): React.JSX.Element {
           onDeactivateMenuItem={deactivateMenuItem}
           onDeactivatePaymentMethod={deactivatePaymentMethod}
           onDeactivateWaiter={deactivateWaiter}
+          onActivateTable={activateTable}
+          onActivateCategory={activateCategory}
+          onActivateMenuItem={activateMenuItem}
+          onActivatePaymentMethod={activatePaymentMethod}
+          onActivateWaiter={activateWaiter}
         />
       )}
       {activeTab === 'history' && (
