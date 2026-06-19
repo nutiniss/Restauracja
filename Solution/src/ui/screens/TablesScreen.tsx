@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -27,6 +27,7 @@ export function TablesScreen({
   selectedOrder,
   orderItems,
   paymentMethods,
+  waiters,
   paymentMethodId,
   selectedItemIds,
   isDetailsOpen,
@@ -37,6 +38,7 @@ export function TablesScreen({
   onOpenOrder,
   onTogglePaymentItem,
   onChangePaymentMethod,
+  onAssignWaiter,
   onPaySelectedItems,
   onPayFullBill,
   onReleaseTable,
@@ -48,6 +50,7 @@ export function TablesScreen({
   selectedOrder?: Order;
   orderItems: OrderItem[];
   paymentMethods: PaymentMethod[];
+  waiters: Waiter[];
   paymentMethodId: number;
   selectedItemIds: number[];
   isDetailsOpen: boolean;
@@ -58,6 +61,7 @@ export function TablesScreen({
   onOpenOrder: (table: RestaurantTable) => void;
   onTogglePaymentItem: (itemId: number) => void;
   onChangePaymentMethod: (methodId: number) => void;
+  onAssignWaiter: (waiterId: number) => void;
   onPaySelectedItems: () => void;
   onPayFullBill: () => void;
   onReleaseTable: () => void;
@@ -72,49 +76,60 @@ export function TablesScreen({
     0,
   );
   const isBillPaid = Boolean(selectedOrder) && remainingAmount === 0;
+  const assignedWaiter = getWaiter(selectedTable.waiterId);
+  const [isWaiterModalOpen, setIsWaiterModalOpen] = useState(false);
+
+  const assignWaiterAndClose = (waiterId: number) => {
+    onAssignWaiter(waiterId);
+    setIsWaiterModalOpen(false);
+  };
+
+  const closeDetails = () => {
+    setIsWaiterModalOpen(false);
+    onCloseDetails();
+  };
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
-      <SectionTitle
-        title="Sala i stoliki"
-        subtitle="Wybierz stolik, otwórz rachunek albo opłać wybrane pozycje."
-      />
-      <View style={styles.tableGrid}>
-        {tables.map(table => {
-          const waiter = getWaiter(table.waiterId);
-          const remaining =
-            getOrderTotal(table.orderId) - getPaidTotal(table.orderId);
+    <>
+      <ScrollView contentContainerStyle={styles.content}>
+        <SectionTitle
+          title="Sala i stoliki"
+          subtitle="Wybierz stolik, otwórz rachunek albo opłać wybrane pozycje."
+        />
+        <View style={styles.tableGrid}>
+          {tables.map(table => {
+            const waiter = getWaiter(table.waiterId);
+            const remaining =
+              getOrderTotal(table.orderId) - getPaidTotal(table.orderId);
 
-          return (
-            <Pressable
-              key={table.id}
-              style={[
-                styles.tableCard,
-                selectedTable.id === table.id && styles.selectedCard,
-              ]}
-              onPress={() => onOpenOrder(table)}
-            >
-              <View style={styles.rowBetween}>
-                <Text style={styles.tableNumber}>Stolik {table.number}</Text>
-                <StatusBadge status={table.status} />
-              </View>
-              <Text style={styles.cardMuted}>
-                {table.zone} • {table.seats} miejsca
-              </Text>
-              <Text style={styles.cardText}>
-                Kelner: {waiter?.fullName ?? 'nieprzypisany'}
-              </Text>
-              <Text style={styles.amount}>{money(remaining)} do zapłaty</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+            return (
+              <Pressable
+                key={table.id}
+                style={styles.tableCard}
+                onPress={() => onOpenOrder(table)}
+              >
+                <View style={styles.rowBetween}>
+                  <Text style={styles.tableNumber}>Stolik {table.number}</Text>
+                  <StatusBadge status={table.status} />
+                </View>
+                <Text style={styles.cardMuted}>
+                  {table.zone} • {table.seats} miejsca
+                </Text>
+                <Text style={styles.cardText}>
+                  Kelner: {waiter?.fullName ?? 'nieprzypisany'}
+                </Text>
+                <Text style={styles.amount}>{money(remaining)} do zapłaty</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </ScrollView>
 
       <Modal
         animationType="slide"
         visible={isDetailsOpen}
         transparent={false}
-        onRequestClose={onCloseDetails}
+        onRequestClose={closeDetails}
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalWindow}>
@@ -125,11 +140,22 @@ export function TablesScreen({
                     Rachunek stolika {selectedTable.number}
                   </Text>
                   <Text style={styles.cardMuted}>
-                    Kelner:{' '}
-                    {getWaiter(selectedOrder?.waiterId)?.fullName ?? 'brak'}
+                    Kelner: {assignedWaiter?.fullName ?? 'brak'}
                   </Text>
                 </View>
-                <Pressable style={styles.closeButton} onPress={onCloseDetails}>
+                <Pressable
+                  style={styles.secondaryButton}
+                  onPress={() => setIsWaiterModalOpen(true)}
+                >
+                  <Text style={styles.secondaryButtonText}>
+                    {assignedWaiter ? 'Zmień' : 'Dodaj'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  hitSlop={12}
+                  style={styles.closeButton}
+                  onPress={closeDetails}
+                >
                   <Text style={styles.closeButtonText}>×</Text>
                 </Pressable>
               </View>
@@ -271,7 +297,70 @@ export function TablesScreen({
           </View>
         </View>
       </Modal>
-    </ScrollView>
+
+      <Modal
+        animationType="fade"
+        transparent
+        visible={isWaiterModalOpen}
+        onRequestClose={() => setIsWaiterModalOpen(false)}
+      >
+        <View style={styles.overlayBackdrop}>
+          <View style={styles.waiterModalWindow}>
+            <View style={styles.rowBetween}>
+              <View style={styles.flexOne}>
+                <Text style={styles.sectionHeading}>Wybierz kelnera</Text>
+                <Text style={styles.cardMuted}>
+                  Stolik {selectedTable.number} zostanie przypisany do wybranej
+                  osoby.
+                </Text>
+              </View>
+              <Pressable
+                hitSlop={12}
+                style={styles.closeButton}
+                onPress={() => setIsWaiterModalOpen(false)}
+              >
+                <Text style={styles.closeButtonText}>×</Text>
+              </Pressable>
+            </View>
+            <View style={styles.waiterList}>
+              {waiters.map(waiter => (
+                <Pressable
+                  key={waiter.id}
+                  disabled={!waiter.isActive}
+                  style={[
+                    styles.waiterOption,
+                    selectedTable.waiterId === waiter.id &&
+                      styles.waiterOptionActive,
+                    !waiter.isActive && styles.disabledChip,
+                  ]}
+                  onPress={() => assignWaiterAndClose(waiter.id)}
+                >
+                  <Text
+                    style={[
+                      styles.waiterOptionText,
+                      selectedTable.waiterId === waiter.id &&
+                        styles.waiterOptionTextActive,
+                    ]}
+                  >
+                    {waiter.fullName}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.cardMuted,
+                      selectedTable.waiterId === waiter.id &&
+                        styles.waiterOptionTextActive,
+                    ]}
+                  >
+                    Kod: {waiter.code} •{' '}
+                    {waiter.isActive ? 'aktywny' : 'nieaktywny'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -288,7 +377,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     width: '48%',
   },
-  selectedCard: { borderColor: colors.primaryLight, borderWidth: 2 },
   rowBetween: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -394,6 +482,7 @@ const styles = StyleSheet.create({
   },
   chipText: { color: '#334e68', fontWeight: '800' },
   chipTextActive: { color: '#fff' },
+  disabledChip: { opacity: 0.45 },
   primaryButton: {
     backgroundColor: colors.primaryLight,
     borderRadius: 14,
@@ -401,6 +490,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   primaryButtonText: { color: '#fff', fontWeight: '800' },
+  secondaryButton: {
+    backgroundColor: '#edf2f7',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  secondaryButtonText: { color: colors.text, fontWeight: '800' },
   paymentActionRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -422,5 +518,32 @@ const styles = StyleSheet.create({
   },
   releaseButton: { alignItems: 'center', marginTop: 14 },
   disabledButton: { backgroundColor: '#9fb3c8' },
+  overlayBackdrop: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 16,
+  },
+  waiterModalWindow: {
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    padding: 18,
+    width: '100%',
+  },
+  waiterList: { gap: 10, marginTop: 16 },
+  waiterOption: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+  },
+  waiterOptionActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryLight,
+  },
+  waiterOptionText: { color: colors.text, fontSize: 16, fontWeight: '800' },
+  waiterOptionTextActive: { color: '#fff' },
   flexOne: { flex: 1 },
 });

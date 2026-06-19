@@ -23,6 +23,18 @@ export class RestaurantTable {
     );
   }
 
+  assignWaiter(waiterId: number): RestaurantTable {
+    return new RestaurantTable(
+      this.id,
+      this.number,
+      this.seats,
+      this.zone,
+      this.status,
+      waiterId,
+      this.orderId,
+    );
+  }
+
   updateStatus(status: TableStatus): RestaurantTable {
     return new RestaurantTable(
       this.id,
