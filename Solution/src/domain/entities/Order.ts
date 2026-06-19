@@ -1,4 +1,4 @@
-import { OrderStatus } from '../enums/RestaurantEnums';
+import {OrderStatus} from '../enums/RestaurantEnums';
 
 export class Order {
   constructor(
@@ -10,18 +10,6 @@ export class Order {
     public readonly closedAt?: string,
     public readonly notes?: string,
   ) {}
-
-  assignWaiter(waiterId: number): Order {
-    return new Order(
-      this.id,
-      this.tableId,
-      waiterId,
-      this.openedAt,
-      this.status,
-      this.closedAt,
-      this.notes,
-    );
-  }
 
   updateStatus(status: OrderStatus, closedAt?: string): Order {
     return new Order(
