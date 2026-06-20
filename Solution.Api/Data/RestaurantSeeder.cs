@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Solution.Api.Models;
 
 namespace Solution.Api.Data;
@@ -7,6 +8,7 @@ public static class RestaurantSeeder
     public static async Task SeedAsync(RestaurantDbContext db)
     {
         await db.Database.EnsureCreatedAsync();
+        await EnsureSchemaAsync(db);
         if (db.Waiters.Any()) return;
 
         await using var transaction = await db.Database.BeginTransactionAsync();
@@ -30,5 +32,14 @@ public static class RestaurantSeeder
         await db.SaveChangesAsync();
 
         await transaction.CommitAsync();
+    }
+
+    private static async Task EnsureSchemaAsync(RestaurantDbContext db)
+    {
+        var tableColumns = await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('Tables')").ToListAsync();
+        if (!tableColumns.Contains(nameof(RestaurantTable.IsActive)))
+        {
+            await db.Database.ExecuteSqlRawAsync("ALTER TABLE Tables ADD COLUMN IsActive INTEGER NOT NULL DEFAULT 1");
+        }
     }
 }
