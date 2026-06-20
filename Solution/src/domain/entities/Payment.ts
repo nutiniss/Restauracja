@@ -1,4 +1,4 @@
-import {PaymentStatus} from '../enums/RestaurantEnums';
+import { PaymentStatus } from '../enums/RestaurantEnums';
 
 export class Payment {
   constructor(
