@@ -2,8 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
-  NativeModules,
-  Platform,
+  Linking,
   Modal,
   Pressable,
   StyleSheet,
@@ -76,7 +75,7 @@ const base64Encode = (value: string) => {
   return output;
 };
 
-const createInvoicePdfBase64 = (
+const createInvoicePdfDataUrl = (
   { payment, table, method }: InvoiceContext,
   buyer: InvoiceBuyer,
 ) => {
@@ -128,10 +127,8 @@ const createInvoicePdfBase64 = (
   });
   pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefPosition}\n%%EOF`;
 
-  return base64Encode(pdf);
+  return `data:application/pdf;base64,${base64Encode(pdf)}`;
 };
-
-const { InvoicePdf } = NativeModules;
 
 export function HistoryScreen({
   payments,
@@ -170,41 +167,14 @@ export function HistoryScreen({
     setBuyer({ name: '', taxId: '', address: '' });
   };
 
-  const downloadGeneratedInvoice = async () => {
+  const downloadGeneratedInvoice = () => {
     if (!invoiceContext || !canDownloadInvoice) {
       Alert.alert('Uzupełnij dane', 'Podaj nazwę i adres nabywcy faktury.');
       return;
     }
 
-    if (Platform.OS !== 'android' || !InvoicePdf?.saveInvoicePdf) {
-      Alert.alert(
-        'Nie można zapisać PDF',
-        'Zapisywanie faktury jest obecnie obsługiwane tylko na Androidzie.',
-      );
-      return;
-    }
-
-    const invoiceNumber = toInvoiceNumber(invoiceContext.payment).replace(
-      /[^a-zA-Z0-9_-]/g,
-      '_',
-    );
-
-    try {
-      await InvoicePdf.saveInvoicePdf(
-        `${invoiceNumber}.pdf`,
-        createInvoicePdfBase64(invoiceContext, buyer),
-      );
-      closeInvoiceModal();
-      Alert.alert(
-        'Faktura zapisana',
-        'PDF został zapisany w Pobrane i powinien otworzyć się w wybranej aplikacji. Możesz go też znaleźć w aplikacji Pliki > Pobrane.',
-      );
-    } catch (error) {
-      Alert.alert(
-        'Nie udało się zapisać faktury',
-        error instanceof Error ? error.message : 'Spróbuj ponownie później.',
-      );
-    }
+    Linking.openURL(createInvoicePdfDataUrl(invoiceContext, buyer));
+    closeInvoiceModal();
   };
 
   return (
