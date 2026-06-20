@@ -17,7 +17,7 @@ If you are already inside `Solution.Api`, use:
 docker compose -f ..\docker-compose.yml up --build
 ```
 
-The compose file exposes the API at `http://localhost:5000` and stores SQLite data in the `restaurant-data` Docker volume. After startup, verify it in a browser at `http://localhost:5000/health` first, then open Swagger at `http://localhost:5000/swagger`, the database dashboard at `http://localhost:5000/db-view`, or the raw store JSON at `http://localhost:5000/api/restaurant/store`.
+The compose file exposes the API at `http://localhost:5000` and stores SQLite data in the `restaurant-data` Docker volume. After startup, verify it in a browser at `http://localhost:5000/health` first, then at `http://localhost:5000/api/restaurant/store`.
 
 ## Option 2: run without Docker
 
@@ -29,7 +29,7 @@ dotnet restore
 dotnet run --launch-profile http
 ```
 
-This starts the API at `http://localhost:5000`. SQLite is created automatically as `restaurant.db` the first time the API starts. Swagger is available at `http://localhost:5000/swagger`, and the browser database preview is available at `http://localhost:5000/db-view`.
+This starts the API at `http://localhost:5000`. SQLite is created automatically as `restaurant.db` the first time the API starts.
 
 ## Then run the mobile app
 
