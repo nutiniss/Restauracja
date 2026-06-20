@@ -12,6 +12,7 @@ import {
 import { RestaurantStore } from '../domain/repositories/RestaurantStore';
 
 const API_URL = 'http://10.0.2.2:5000/api/restaurant';
+const API_ORIGIN = 'http://10.0.2.2:5000';
 
 const toStore = (data: RestaurantStore): RestaurantStore => ({
   tables: data.tables.map(
@@ -148,4 +149,6 @@ export const restaurantApi = {
     }),
   releaseTable: (tableId: number) =>
     request(`/tables/${tableId}/release`, { method: 'POST' }),
+  getInvoiceUrl: (paymentId: number) =>
+    `${API_ORIGIN}/api/restaurant/payments/${paymentId}/invoice.pdf`,
 };
