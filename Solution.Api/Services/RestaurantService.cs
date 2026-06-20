@@ -62,6 +62,53 @@ public sealed class RestaurantService(RestaurantDbContext db)
         await db.SaveChangesAsync();
     }
 
+    public async Task UpsertTableAsync(RestaurantTable input)
+    {
+        var table = await db.Tables.FindAsync(input.Id);
+        if (table is null)
+        {
+            db.Tables.Add(input);
+        }
+        else
+        {
+            table.Number = input.Number; table.Seats = input.Seats; table.Zone = input.Zone; table.Status = input.Status; table.WaiterId = input.WaiterId; table.OrderId = input.OrderId; table.IsActive = input.IsActive;
+        }
+        await db.SaveChangesAsync();
+    }
+
+    public async Task UpsertCategoryAsync(MenuCategory input)
+    {
+        var category = await db.Categories.FindAsync(input.Id);
+        if (category is null) db.Categories.Add(input);
+        else { category.Name = input.Name; category.Description = input.Description; category.DisplayOrder = input.DisplayOrder; category.IsActive = input.IsActive; }
+        await db.SaveChangesAsync();
+    }
+
+    public async Task UpsertMenuItemAsync(MenuItem input)
+    {
+        if (!await db.Categories.AnyAsync(x => x.Id == input.CategoryId)) throw new InvalidOperationException("Nie znaleziono kategorii menu.");
+        var item = await db.MenuItems.FindAsync(input.Id);
+        if (item is null) db.MenuItems.Add(input);
+        else { item.CategoryId = input.CategoryId; item.Name = input.Name; item.Description = input.Description; item.Price = input.Price; item.IsAvailable = input.IsAvailable; item.ImageUrl = input.ImageUrl; }
+        await db.SaveChangesAsync();
+    }
+
+    public async Task UpsertPaymentMethodAsync(PaymentMethod input)
+    {
+        var method = await db.PaymentMethods.FindAsync(input.Id);
+        if (method is null) db.PaymentMethods.Add(input);
+        else { method.Name = input.Name; method.IsActive = input.IsActive; }
+        await db.SaveChangesAsync();
+    }
+
+    public async Task UpsertWaiterAsync(Waiter input)
+    {
+        var waiter = await db.Waiters.FindAsync(input.Id);
+        if (waiter is null) db.Waiters.Add(input);
+        else { waiter.FirstName = input.FirstName; waiter.LastName = input.LastName; waiter.Code = input.Code; waiter.IsActive = input.IsActive; }
+        await db.SaveChangesAsync();
+    }
+
     public async Task ReleaseTableAsync(int tableId)
     {
         var table = await db.Tables.FindAsync(tableId) ?? throw new InvalidOperationException("Nie znaleziono stolika.");

@@ -149,4 +149,29 @@ export const restaurantApi = {
     }),
   releaseTable: (tableId: number) =>
     request(`/tables/${tableId}/release`, { method: 'POST' }),
+  saveTable: (table: RestaurantTable) =>
+    request(`/admin/tables/${table.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(table),
+    }),
+  saveCategory: (category: MenuCategory) =>
+    request(`/admin/categories/${category.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(category),
+    }),
+  saveMenuItem: (item: MenuItem) =>
+    request(`/admin/menu-items/${item.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(item),
+    }),
+  savePaymentMethod: (method: PaymentMethod) =>
+    request(`/admin/payment-methods/${method.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(method),
+    }),
+  saveWaiter: (waiter: Waiter) =>
+    request(`/admin/waiters/${waiter.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(waiter),
+    }),
 };

@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Solution.Api.Contracts;
 using Solution.Api.Data;
+using Solution.Api.Models;
 using Solution.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,6 +52,11 @@ api.MapPost("/tables/{tableId:int}/items", async (int tableId, AddOrderItemReque
 api.MapPut("/tables/{tableId:int}/waiter", async (int tableId, AssignWaiterRequest request, RestaurantService service) => { await service.AssignWaiterAsync(tableId, request); return Results.Ok(await service.GetStoreAsync()); });
 api.MapPost("/orders/{orderId:int}/payments", async (int orderId, PayOrderRequest request, RestaurantService service) => { await service.PayAsync(orderId, request); return Results.Ok(await service.GetStoreAsync()); });
 api.MapPost("/tables/{tableId:int}/release", async (int tableId, RestaurantService service) => { await service.ReleaseTableAsync(tableId); return Results.Ok(await service.GetStoreAsync()); });
+api.MapPut("/admin/tables/{id:int}", async (int id, RestaurantTable table, RestaurantService service) => { table.Id = id; await service.UpsertTableAsync(table); return Results.Ok(await service.GetStoreAsync()); });
+api.MapPut("/admin/categories/{id:int}", async (int id, MenuCategory category, RestaurantService service) => { category.Id = id; await service.UpsertCategoryAsync(category); return Results.Ok(await service.GetStoreAsync()); });
+api.MapPut("/admin/menu-items/{id:int}", async (int id, MenuItem item, RestaurantService service) => { item.Id = id; await service.UpsertMenuItemAsync(item); return Results.Ok(await service.GetStoreAsync()); });
+api.MapPut("/admin/payment-methods/{id:int}", async (int id, PaymentMethod method, RestaurantService service) => { method.Id = id; await service.UpsertPaymentMethodAsync(method); return Results.Ok(await service.GetStoreAsync()); });
+api.MapPut("/admin/waiters/{id:int}", async (int id, Waiter waiter, RestaurantService service) => { waiter.Id = id; await service.UpsertWaiterAsync(waiter); return Results.Ok(await service.GetStoreAsync()); });
 
 app.Run();
 

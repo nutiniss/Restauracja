@@ -400,69 +400,92 @@ function App(): React.JSX.Element {
     setSelectedItemIds([]);
   };
 
-  const saveTable = (table: RestaurantTable) => {
-    setStore(current => ({
-      ...current,
-      tables: current.tables.some(currentTable => currentTable.id === table.id)
-        ? current.tables.map(currentTable =>
-            currentTable.id === table.id ? table : currentTable,
-          )
-        : [...current.tables, table],
-    }));
+  const saveTable = async (table: RestaurantTable) => {
+    const syncedStore = await syncStore(() => restaurantApi.saveTable(table));
+    if (!syncedStore) {
+      setStore(current => ({
+        ...current,
+        tables: current.tables.some(
+          currentTable => currentTable.id === table.id,
+        )
+          ? current.tables.map(currentTable =>
+              currentTable.id === table.id ? table : currentTable,
+            )
+          : [...current.tables, table],
+      }));
+    }
     setSelectedTableId(table.id);
   };
 
-  const saveCategory = (category: MenuCategory) => {
-    setStore(current => ({
-      ...current,
-      categories: current.categories.some(
-        currentCategory => currentCategory.id === category.id,
-      )
-        ? current.categories.map(currentCategory =>
-            currentCategory.id === category.id ? category : currentCategory,
-          )
-        : [...current.categories, category],
-    }));
+  const saveCategory = async (category: MenuCategory) => {
+    const syncedStore = await syncStore(() =>
+      restaurantApi.saveCategory(category),
+    );
+    if (!syncedStore) {
+      setStore(current => ({
+        ...current,
+        categories: current.categories.some(
+          currentCategory => currentCategory.id === category.id,
+        )
+          ? current.categories.map(currentCategory =>
+              currentCategory.id === category.id ? category : currentCategory,
+            )
+          : [...current.categories, category],
+      }));
+    }
     setSelectedCategoryId(category.id);
   };
 
-  const saveMenuItemFromAdmin = (menuItem: MenuItem) => {
-    setStore(current => ({
-      ...current,
-      menuItems: current.menuItems.some(item => item.id === menuItem.id)
-        ? current.menuItems.map(item =>
-            item.id === menuItem.id ? menuItem : item,
-          )
-        : [...current.menuItems, menuItem],
-    }));
+  const saveMenuItemFromAdmin = async (menuItem: MenuItem) => {
+    const syncedStore = await syncStore(() =>
+      restaurantApi.saveMenuItem(menuItem),
+    );
+    if (!syncedStore) {
+      setStore(current => ({
+        ...current,
+        menuItems: current.menuItems.some(item => item.id === menuItem.id)
+          ? current.menuItems.map(item =>
+              item.id === menuItem.id ? menuItem : item,
+            )
+          : [...current.menuItems, menuItem],
+      }));
+    }
     setSelectedCategoryId(menuItem.categoryId);
   };
 
-  const savePaymentMethod = (paymentMethod: PaymentMethod) => {
-    setStore(current => ({
-      ...current,
-      paymentMethods: current.paymentMethods.some(
-        method => method.id === paymentMethod.id,
-      )
-        ? current.paymentMethods.map(method =>
-            method.id === paymentMethod.id ? paymentMethod : method,
-          )
-        : [...current.paymentMethods, paymentMethod],
-    }));
+  const savePaymentMethod = async (paymentMethod: PaymentMethod) => {
+    const syncedStore = await syncStore(() =>
+      restaurantApi.savePaymentMethod(paymentMethod),
+    );
+    if (!syncedStore) {
+      setStore(current => ({
+        ...current,
+        paymentMethods: current.paymentMethods.some(
+          method => method.id === paymentMethod.id,
+        )
+          ? current.paymentMethods.map(method =>
+              method.id === paymentMethod.id ? paymentMethod : method,
+            )
+          : [...current.paymentMethods, paymentMethod],
+      }));
+    }
     setPaymentMethodId(paymentMethod.id);
   };
 
-  const saveWaiter = (waiter: Waiter) => {
-    setStore(current => ({
-      ...current,
-      waiters: current.waiters.some(
-        currentWaiter => currentWaiter.id === waiter.id,
-      )
-        ? current.waiters.map(currentWaiter =>
-            currentWaiter.id === waiter.id ? waiter : currentWaiter,
-          )
-        : [...current.waiters, waiter],
-    }));
+  const saveWaiter = async (waiter: Waiter) => {
+    const syncedStore = await syncStore(() => restaurantApi.saveWaiter(waiter));
+    if (!syncedStore) {
+      setStore(current => ({
+        ...current,
+        waiters: current.waiters.some(
+          currentWaiter => currentWaiter.id === waiter.id,
+        )
+          ? current.waiters.map(currentWaiter =>
+              currentWaiter.id === waiter.id ? waiter : currentWaiter,
+            )
+          : [...current.waiters, waiter],
+      }));
+    }
   };
 
   const activateTable = (tableId: number) => {
