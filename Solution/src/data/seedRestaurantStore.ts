@@ -1,6 +1,19 @@
-import {MenuCategory, MenuItem, Order, OrderItem, Payment, PaymentMethod, RestaurantTable, Waiter} from '../domain/entities';
-import {OrderItemStatus, OrderStatus, TableStatus} from '../domain/enums/RestaurantEnums';
-import {RestaurantStore} from '../domain/repositories/RestaurantStore';
+import {
+  MenuCategory,
+  MenuItem,
+  Order,
+  OrderItem,
+  Payment,
+  PaymentMethod,
+  RestaurantTable,
+  Waiter,
+} from '../domain/entities';
+import {
+  OrderItemStatus,
+  OrderStatus,
+  TableStatus,
+} from '../domain/enums/RestaurantEnums';
+import { RestaurantStore } from '../domain/repositories/RestaurantStore';
 
 export const createSeedRestaurantStore = (): RestaurantStore => ({
   waiters: [
@@ -47,7 +60,27 @@ export const createSeedRestaurantStore = (): RestaurantStore => ({
     new OrderItem(5, 3, 5, 2, 10, OrderItemStatus.Paid, 2),
   ],
   payments: [
-    new Payment(1, 2, 1, 39, 0, '13:30'),
-    new Payment(2, 3, 2, 20, 5, '12:25'),
+    new Payment(
+      1,
+      2,
+      1,
+      39,
+      0,
+      '13:30',
+      undefined,
+      'FV/2026/06/001',
+      'https://example.com/invoices/FV-2026-06-001.pdf',
+    ),
+    new Payment(
+      2,
+      3,
+      2,
+      20,
+      5,
+      '12:25',
+      undefined,
+      'FV/2026/06/002',
+      'https://example.com/invoices/FV-2026-06-002.pdf',
+    ),
   ],
 });
