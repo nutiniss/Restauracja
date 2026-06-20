@@ -142,13 +142,14 @@ export const restaurantApi = {
     orderId: number,
     paymentMethodId: number,
     orderItemIds?: number[],
+    tipAmount = 0,
   ) =>
     request(`/orders/${orderId}/payments`, {
       method: 'POST',
-      body: JSON.stringify({ paymentMethodId, orderItemIds }),
+      body: JSON.stringify({ paymentMethodId, orderItemIds, tipAmount }),
     }),
   releaseTable: (tableId: number) =>
     request(`/tables/${tableId}/release`, { method: 'POST' }),
   getInvoiceUrl: (paymentId: number) =>
-    `${API_ORIGIN}/api/restaurant/payments/${paymentId}/invoice.pdf`,
+    `${API_ORIGIN}/api/restaurant/payments/${paymentId}/invoice`,
 };

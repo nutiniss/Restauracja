@@ -38,15 +38,19 @@ function App(): React.JSX.Element {
   const [menuSourceTableId, setMenuSourceTableId] = useState<number>();
   const [apiStatus, setApiStatus] = useState('Ładowanie danych z API...');
 
-  const syncStore = async (operation: () => Promise<RestaurantStore>) => {
+  const syncStore = async (
+    operation: () => Promise<RestaurantStore>,
+  ): Promise<RestaurantStore | undefined> => {
     try {
       const nextStore = await operation();
       setStore(nextStore);
       setApiStatus('Połączono z API i bazą danych');
+      return nextStore;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'nieznany błąd';
       setApiStatus(`Tryb offline: ${message}`);
       console.warn('Restaurant API unavailable', error);
+      return undefined;
     }
   };
 
@@ -277,18 +281,23 @@ function App(): React.JSX.Element {
     }));
   };
 
-  const paySelectedItems = (tipAmount = 0) => {
+  const paySelectedItems = async (tipAmount = 0) => {
     if (!selectedOrder || selectedItemIds.length === 0) {
       return;
     }
 
-    syncStore(() =>
+    const syncedStore = await syncStore(() =>
       restaurantApi.payOrder(
         selectedOrder.id,
         paymentMethodId,
         selectedItemIds,
+        tipAmount,
       ),
     );
+    if (syncedStore) {
+      setSelectedItemIds([]);
+      return;
+    }
 
     setStore(current => {
       const itemsToPay = current.orderItems.filter(
@@ -319,12 +328,23 @@ function App(): React.JSX.Element {
     setSelectedItemIds([]);
   };
 
-  const payFullBill = (tipAmount = 0) => {
+  const payFullBill = async (tipAmount = 0) => {
     if (!selectedOrder) {
       return;
     }
 
-    syncStore(() => restaurantApi.payOrder(selectedOrder.id, paymentMethodId));
+    const syncedStore = await syncStore(() =>
+      restaurantApi.payOrder(
+        selectedOrder.id,
+        paymentMethodId,
+        undefined,
+        tipAmount,
+      ),
+    );
+    if (syncedStore) {
+      setSelectedItemIds([]);
+      return;
+    }
 
     setStore(current => {
       const itemsToPay = current.orderItems.filter(
