@@ -53,9 +53,6 @@ public sealed class RestaurantService(RestaurantDbContext db)
         var amount = items.Sum(x => x.Total); if (amount <= 0) return;
         var payment = new Payment { OrderId = orderId, PaymentMethodId = request.PaymentMethodId, Amount = amount, TipAmount = request.TipAmount, PaidAt = "teraz" };
         db.Payments.Add(payment); await db.SaveChangesAsync();
-        payment.InvoiceNumber = $"FV/{DateTime.UtcNow:yyyy/MM}/{payment.Id:D4}";
-        payment.InvoiceUrl = $"https://example.com/invoices/FV-{DateTime.UtcNow:yyyy-MM}-{payment.Id:D4}.pdf";
-        await db.SaveChangesAsync();
         foreach (var item in items) { item.PaymentId = payment.Id; item.Status = OrderItemStatus.Paid; }
         var paidIds = items.Select(x => x.Id).ToHashSet();
         var hasUnpaid = await db.OrderItems.AnyAsync(x => x.OrderId == orderId && !paidIds.Contains(x.Id) && !x.PaymentId.HasValue && x.Status != OrderItemStatus.Paid && x.Status != OrderItemStatus.Cancelled);
