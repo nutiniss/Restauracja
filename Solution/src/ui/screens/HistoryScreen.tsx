@@ -2,10 +2,8 @@ import React, { useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
-  Share,
+  Linking,
   Modal,
-  NativeModules,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -23,38 +21,11 @@ import { colors } from '../theme/colors';
 
 const money = (value: number) => `${value.toFixed(2)} zł`;
 
-const normalizeTaxId = (value: string) => value.replace(/\D/g, '');
-
-const isValidPolishNip = (value: string) => {
-  const taxId = normalizeTaxId(value);
-
-  if (taxId.length !== 10) {
-    return false;
-  }
-
-  const weights = [6, 5, 7, 2, 3, 4, 5, 6, 7];
-  const checksum =
-    weights.reduce(
-      (sum, weight, index) => sum + weight * Number(taxId[index]),
-      0,
-    ) % 11;
-
-  return checksum !== 10 && checksum === Number(taxId[9]);
-};
-
 type InvoiceBuyer = {
   name: string;
   taxId: string;
   address: string;
 };
-
-type InvoiceModule = {
-  sharePdf: (fileName: string, base64Pdf: string) => Promise<void>;
-};
-
-const nativeInvoiceModule = NativeModules.InvoiceModule as
-  | InvoiceModule
-  | undefined;
 
 type InvoiceContext = {
   payment: Payment;
@@ -104,7 +75,7 @@ const base64Encode = (value: string) => {
   return output;
 };
 
-const createInvoicePdfBase64 = (
+const createInvoicePdfDataUrl = (
   { payment, table, method }: InvoiceContext,
   buyer: InvoiceBuyer,
 ) => {
@@ -117,7 +88,7 @@ const createInvoicePdfBase64 = (
     'Sprzedawca: RestauracjaPOS',
     'Nabywca:',
     buyer.name,
-    `NIP: ${normalizeTaxId(buyer.taxId)}`,
+    `NIP: ${buyer.taxId || '-'}`,
     buyer.address,
     '',
     `Platnosc: #${payment.id}`,
@@ -154,17 +125,10 @@ const createInvoicePdfBase64 = (
   offsets.slice(1).forEach(offset => {
     pdf += `${String(offset).padStart(10, '0')} 00000 n \n`;
   });
-  pdf += `trailer\n<< /Size ${
-    objects.length + 1
-  } /Root 1 0 R >>\nstartxref\n${xrefPosition}\n%%EOF`;
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefPosition}\n%%EOF`;
 
-  return base64Encode(pdf);
+  return `data:application/pdf;base64,${base64Encode(pdf)}`;
 };
-
-const createInvoicePdfDataUrl = (
-  context: InvoiceContext,
-  buyer: InvoiceBuyer,
-) => `data:application/pdf;base64,${createInvoicePdfBase64(context, buyer)}`;
 
 export function HistoryScreen({
   payments,
@@ -183,11 +147,8 @@ export function HistoryScreen({
     taxId: '',
     address: '',
   });
-  const isTaxIdValid = isValidPolishNip(buyer.taxId);
   const canDownloadInvoice =
-    buyer.name.trim().length > 0 &&
-    buyer.address.trim().length > 0 &&
-    isTaxIdValid;
+    buyer.name.trim().length > 0 && buyer.address.trim().length > 0;
   const modalTitle = useMemo(
     () =>
       invoiceContext
@@ -206,39 +167,14 @@ export function HistoryScreen({
     setBuyer({ name: '', taxId: '', address: '' });
   };
 
-  const downloadGeneratedInvoice = async () => {
+  const downloadGeneratedInvoice = () => {
     if (!invoiceContext || !canDownloadInvoice) {
-      Alert.alert(
-        'Uzupełnij dane',
-        'Podaj nazwę, adres nabywcy oraz poprawny 10-cyfrowy NIP.',
-      );
+      Alert.alert('Uzupełnij dane', 'Podaj nazwę i adres nabywcy faktury.');
       return;
     }
 
-    const invoiceNumber = toInvoiceNumber(invoiceContext.payment);
-
-    try {
-      const pdfBase64 = createInvoicePdfBase64(invoiceContext, buyer);
-
-      if (Platform.OS === 'android' && nativeInvoiceModule) {
-        await nativeInvoiceModule.sharePdf(`${invoiceNumber}.pdf`, pdfBase64);
-      } else {
-        await Share.share(
-          {
-            title: `Faktura ${invoiceNumber}`,
-            url: createInvoicePdfDataUrl(invoiceContext, buyer),
-            message: `Faktura ${invoiceNumber} została wygenerowana w formacie PDF.`,
-          },
-          { dialogTitle: `Faktura ${invoiceNumber}` },
-        );
-      }
-      closeInvoiceModal();
-    } catch {
-      Alert.alert(
-        'Nie udało się wygenerować faktury',
-        'Spróbuj ponownie lub wybierz inną aplikację do udostępnienia PDF.',
-      );
-    }
+    Linking.openURL(createInvoicePdfDataUrl(invoiceContext, buyer));
+    closeInvoiceModal();
   };
 
   return (
@@ -326,26 +262,17 @@ export function HistoryScreen({
               placeholderTextColor={colors.muted}
             />
 
-            <Text style={styles.inputLabel}>NIP *</Text>
+            <Text style={styles.inputLabel}>NIP</Text>
             <TextInput
               style={styles.input}
               value={buyer.taxId}
               onChangeText={taxId =>
-                setBuyer(current => ({
-                  ...current,
-                  taxId: normalizeTaxId(taxId),
-                }))
+                setBuyer(current => ({ ...current, taxId }))
               }
-              maxLength={10}
-              placeholder="10 cyfr"
+              placeholder="opcjonalnie"
               placeholderTextColor={colors.muted}
               keyboardType="number-pad"
             />
-            {buyer.taxId.length > 0 && !isTaxIdValid ? (
-              <Text style={styles.errorText}>
-                Podaj poprawny 10-cyfrowy NIP.
-              </Text>
-            ) : null}
 
             <Text style={styles.inputLabel}>Adres nabywcy</Text>
             <TextInput
@@ -451,12 +378,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
     marginTop: 14,
-  },
-  errorText: {
-    color: '#c53030',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 6,
   },
   input: {
     backgroundColor: colors.surface,
