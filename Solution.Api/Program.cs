@@ -29,6 +29,5 @@ api.MapPost("/tables/{tableId:int}/items", async (int tableId, AddOrderItemReque
 api.MapPut("/tables/{tableId:int}/waiter", async (int tableId, AssignWaiterRequest request, RestaurantService service) => { await service.AssignWaiterAsync(tableId, request); return Results.Ok(await service.GetStoreAsync()); });
 api.MapPost("/orders/{orderId:int}/payments", async (int orderId, PayOrderRequest request, RestaurantService service) => { await service.PayAsync(orderId, request); return Results.Ok(await service.GetStoreAsync()); });
 api.MapPost("/tables/{tableId:int}/release", async (int tableId, RestaurantService service) => { await service.ReleaseTableAsync(tableId); return Results.Ok(await service.GetStoreAsync()); });
-api.MapGet("/payments/{paymentId:int}/invoice.pdf", async (int paymentId, RestaurantService service) => Results.File(await service.CreateInvoicePdfAsync(paymentId), "application/pdf", $"faktura-{paymentId}.pdf"));
 
 app.Run();
