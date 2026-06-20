@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Linking } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { restaurantApi } from './src/api/restaurantApi';
 import {
@@ -356,6 +357,14 @@ function App(): React.JSX.Element {
     setSelectedItemIds([]);
   };
 
+  const downloadReceipt = () => {
+    if (!selectedOrder) {
+      return;
+    }
+
+    Linking.openURL(restaurantApi.getReceiptPdfUrl(selectedOrder.id));
+  };
+
   const payFullBill = async (tipAmount = 0) => {
     if (!selectedOrder) {
       return;
@@ -709,6 +718,7 @@ function App(): React.JSX.Element {
               setSelectedItemIds([]);
             }}
             onAddOrderItem={goToOrderItemSelection}
+            onDownloadReceipt={downloadReceipt}
           />
         )}
         {activeTab === 'menu' && (

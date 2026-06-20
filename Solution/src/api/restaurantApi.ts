@@ -13,6 +13,9 @@ import { RestaurantStore } from '../domain/repositories/RestaurantStore';
 
 const API_URL = 'http://10.0.2.2:5000/api/restaurant';
 
+export const getReceiptPdfUrl = (orderId: number) =>
+  `${API_URL}/orders/${orderId}/receipt.pdf`;
+
 const toStore = (data: RestaurantStore): RestaurantStore => ({
   tables: data.tables.map(
     table =>
@@ -137,6 +140,7 @@ export const restaurantApi = {
       method: 'PUT',
       body: JSON.stringify({ waiterId }),
     }),
+  getReceiptPdfUrl,
   payOrder: (
     orderId: number,
     paymentMethodId: number,
