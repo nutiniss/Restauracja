@@ -90,7 +90,6 @@ static async Task<string> BuildDatabaseViewAsync(RestaurantDbContext db)
 <body>
 <header>
   <h1>Podgląd bazy restauracji</h1>
-  <p>Ładny, lekki dashboard SQLite generowany bezpośrednio przez API.</p>
   <nav class="links"><a class="pill" href="/swagger">Swagger</a><a class="pill" href="/api/restaurant/store">JSON sklepu</a><a class="pill" href="/health">Health check</a></nav>
 </header>
 <main>
