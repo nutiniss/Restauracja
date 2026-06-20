@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Solution.Api.Contracts;
 using Solution.Api.Data;
@@ -66,90 +65,5 @@ public sealed class RestaurantService(RestaurantDbContext db)
     {
         var table = await db.Tables.FindAsync(tableId) ?? throw new InvalidOperationException("Nie znaleziono stolika.");
         table.Status = TableStatus.Free; table.WaiterId = null; table.OrderId = null; await db.SaveChangesAsync();
-    }
-    public async Task<byte[]> CreateInvoicePdfAsync(int paymentId)
-    {
-        var payment = await db.Payments.AsNoTracking().FirstOrDefaultAsync(x => x.Id == paymentId) ?? throw new InvalidOperationException("Nie znaleziono płatności.");
-        var order = await db.Orders.AsNoTracking().FirstAsync(x => x.Id == payment.OrderId);
-        var table = await db.Tables.AsNoTracking().FirstAsync(x => x.Id == order.TableId);
-        var method = await db.PaymentMethods.AsNoTracking().FirstAsync(x => x.Id == payment.PaymentMethodId);
-        var items = await db.OrderItems.AsNoTracking()
-            .Where(x => x.PaymentId == payment.Id)
-            .Join(db.MenuItems.AsNoTracking(), item => item.MenuItemId, menuItem => menuItem.Id, (item, menuItem) => new { item, menuItem })
-            .OrderBy(x => x.item.Id)
-            .ToListAsync();
-
-        var lines = new List<string>
-        {
-            $"Faktura #{payment.Id}",
-            "RestauracjaPOS",
-            $"Data platnosci: {payment.PaidAt}",
-            $"Stolik: {table.Number} ({table.Zone})",
-            $"Metoda platnosci: {method.Name}",
-            "",
-            "Pozycje:"
-        };
-
-        foreach (var row in items)
-        {
-            lines.Add($"- {row.menuItem.Name} x{row.item.Quantity}  {row.item.Total:0.00} zl");
-        }
-
-        lines.Add("");
-        lines.Add($"Suma netto/brutto: {payment.Amount:0.00} zl");
-        lines.Add($"Napiwek: {payment.TipAmount:0.00} zl");
-        lines.Add($"Razem: {(payment.Amount + payment.TipAmount):0.00} zl");
-
-        return CreateSimplePdf(lines);
-    }
-
-    private static byte[] CreateSimplePdf(IReadOnlyList<string> lines)
-    {
-        static string PdfText(string value) => value
-            .Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("(", "\\(", StringComparison.Ordinal)
-            .Replace(")", "\\)", StringComparison.Ordinal);
-
-        var content = new StringBuilder();
-        content.AppendLine("BT");
-        content.AppendLine("/F1 14 Tf");
-        content.AppendLine("50 790 Td");
-
-        foreach (var line in lines)
-        {
-            content.AppendLine($"({PdfText(line)}) Tj");
-            content.AppendLine("0 -22 Td");
-        }
-
-        content.AppendLine("ET");
-        var stream = content.ToString();
-        var objects = new List<string>
-        {
-            "<< /Type /Catalog /Pages 2 0 R >>",
-            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
-            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
-            $"<< /Length {Encoding.UTF8.GetByteCount(stream)} >>\nstream\n{stream}endstream"
-        };
-
-        using var memory = new MemoryStream();
-        void Write(string value) => memory.Write(Encoding.UTF8.GetBytes(value));
-        Write("%PDF-1.4\n");
-        var offsets = new List<long> { 0 };
-        for (var i = 0; i < objects.Count; i++)
-        {
-            offsets.Add(memory.Position);
-            Write($"{i + 1} 0 obj\n{objects[i]}\nendobj\n");
-        }
-
-        var xrefPosition = memory.Position;
-        Write($"xref\n0 {objects.Count + 1}\n0000000000 65535 f \n");
-        foreach (var offset in offsets.Skip(1))
-        {
-            Write($"{offset:0000000000} 00000 n \n");
-        }
-
-        Write($"trailer\n<< /Size {objects.Count + 1} /Root 1 0 R >>\nstartxref\n{xrefPosition}\n%%EOF");
-        return memory.ToArray();
     }
 }
