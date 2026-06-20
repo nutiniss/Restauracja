@@ -690,7 +690,6 @@ function App(): React.JSX.Element {
           orders={store.orders}
           tables={store.tables}
           paymentMethods={store.paymentMethods}
-          getInvoiceUrl={restaurantApi.getInvoiceUrl}
         />
       )}
     </AppShell>
