@@ -13,6 +13,7 @@ export function AppShell({
   mode,
   onChangeMode,
   onChangeTab,
+  onLogout,
   apiStatus,
   currentUser,
   children,
@@ -21,6 +22,7 @@ export function AppShell({
   mode: AppMode;
   onChangeMode: (mode: AppMode) => void;
   onChangeTab: (tab: AppTab) => void;
+  onLogout: () => void;
   apiStatus?: string;
   currentUser: UserSession;
   children: React.ReactNode;
@@ -53,6 +55,9 @@ export function AppShell({
           <Text style={styles.roleText}>
             Rola: {currentUser.role === 'admin' ? 'administrator' : 'kelner'}
           </Text>
+          <Pressable style={styles.logoutButton} onPress={onLogout}>
+            <Text style={styles.logoutButtonText}>Wyloguj</Text>
+          </Pressable>
         </View>
         <View style={styles.modeSwitcher}>
           <ModeButton
@@ -157,6 +162,17 @@ const styles = StyleSheet.create({
   },
   userText: { color: colors.background, fontSize: 14, fontWeight: '800' },
   roleText: { color: '#bcccdc', fontSize: 12, fontWeight: '700', marginTop: 2 },
+  logoutButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(255,255,255,0.32)',
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  logoutButtonText: { color: colors.background, fontWeight: '900' },
   apiStatus: {
     color: '#bcccdc',
     fontSize: 12,
