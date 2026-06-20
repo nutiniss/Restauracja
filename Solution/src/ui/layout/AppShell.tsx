@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { UserSession } from '../../domain/entities/UserSession';
 import { TabButton } from '../components/TabButton';
 import { colors } from '../theme/colors';
 
@@ -13,6 +14,7 @@ export function AppShell({
   onChangeMode,
   onChangeTab,
   apiStatus,
+  currentUser,
   children,
 }: {
   activeTab: AppTab;
@@ -20,9 +22,16 @@ export function AppShell({
   onChangeMode: (mode: AppMode) => void;
   onChangeTab: (tab: AppTab) => void;
   apiStatus?: string;
+  currentUser: UserSession;
   children: React.ReactNode;
 }) {
+  const canUseAdmin = currentUser.role === 'admin';
+
   const switchMode = (nextMode: AppMode) => {
+    if (nextMode === 'admin' && !canUseAdmin) {
+      return;
+    }
+
     onChangeMode(nextMode);
     onChangeTab(nextMode === 'admin' ? 'admin' : 'tables');
   };
@@ -37,17 +46,27 @@ export function AppShell({
             ? 'Panel administracji'
             : 'Mobilny system obsługi sali'}
         </Text>
+        <View style={styles.userBar}>
+          <Text style={styles.userText}>
+            Zalogowano: {currentUser.displayName} ({currentUser.username})
+          </Text>
+          <Text style={styles.roleText}>
+            Rola: {currentUser.role === 'admin' ? 'administrator' : 'kelner'}
+          </Text>
+        </View>
         <View style={styles.modeSwitcher}>
           <ModeButton
             label="Obsługa sali"
             active={mode === 'service'}
             onPress={() => switchMode('service')}
           />
-          <ModeButton
-            label="Administracja"
-            active={mode === 'admin'}
-            onPress={() => switchMode('admin')}
-          />
+          {canUseAdmin && (
+            <ModeButton
+              label="Administracja"
+              active={mode === 'admin'}
+              onPress={() => switchMode('admin')}
+            />
+          )}
         </View>
         {apiStatus && <Text style={styles.apiStatus}>{apiStatus}</Text>}
       </View>
@@ -133,6 +152,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 4,
   },
+  userBar: {
+    marginTop: 10,
+  },
+  userText: { color: colors.background, fontSize: 14, fontWeight: '800' },
+  roleText: { color: '#bcccdc', fontSize: 12, fontWeight: '700', marginTop: 2 },
   apiStatus: {
     color: '#bcccdc',
     fontSize: 12,

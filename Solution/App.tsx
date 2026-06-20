@@ -11,6 +11,7 @@ import {
   RestaurantTable,
   Waiter,
 } from './src/domain/entities';
+import { UserSession } from './src/domain/entities/UserSession';
 import {
   OrderItemStatus,
   OrderStatus,
@@ -20,6 +21,7 @@ import { RestaurantStore } from './src/domain/repositories/RestaurantStore';
 import { AppMode, AppShell, AppTab } from './src/ui/layout/AppShell';
 import { AdminScreen } from './src/ui/screens/AdminScreen';
 import { HistoryScreen } from './src/ui/screens/HistoryScreen';
+import { LoginScreen } from './src/ui/screens/LoginScreen';
 import { MenuScreen } from './src/ui/screens/MenuScreen';
 import { TablesScreen } from './src/ui/screens/TablesScreen';
 import { WaitersScreen } from './src/ui/screens/WaitersScreen';
@@ -27,6 +29,7 @@ import { WaitersScreen } from './src/ui/screens/WaitersScreen';
 const initialStore = restaurantApi.seedStore();
 
 function App(): React.JSX.Element {
+  const [currentUser, setCurrentUser] = useState<UserSession>();
   const [mode, setMode] = useState<AppMode>('service');
   const [activeTab, setActiveTab] = useState<AppTab>('tables');
   const [store, setStore] = useState<RestaurantStore>(initialStore);
@@ -200,6 +203,12 @@ function App(): React.JSX.Element {
   };
 
   const changeMode = (nextMode: AppMode) => {
+    if (nextMode === 'admin' && currentUser?.role !== 'admin') {
+      setMode('service');
+      setActiveTab('tables');
+      return;
+    }
+
     setMode(nextMode);
     setIsTableDetailsOpen(false);
     setSelectedItemIds([]);
@@ -207,6 +216,12 @@ function App(): React.JSX.Element {
   };
 
   const changeTab = (tab: AppTab) => {
+    if (tab === 'admin' && currentUser?.role !== 'admin') {
+      setMode('service');
+      setActiveTab('tables');
+      return;
+    }
+
     if (mode === 'admin' && tab !== 'admin') {
       setMode('service');
     }
@@ -607,12 +622,21 @@ function App(): React.JSX.Element {
     setIsTableDetailsOpen(false);
   };
 
+  if (!currentUser) {
+    return (
+      <SafeAreaProvider>
+        <LoginScreen onLogin={setCurrentUser} />
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <AppShell
         activeTab={activeTab}
         mode={mode}
         apiStatus={apiStatus}
+        currentUser={currentUser}
         onChangeMode={changeMode}
         onChangeTab={changeTab}
       >
@@ -662,7 +686,7 @@ function App(): React.JSX.Element {
         {activeTab === 'waiters' && (
           <WaitersScreen waiters={store.waiters} tables={store.tables} />
         )}
-        {activeTab === 'admin' && (
+        {activeTab === 'admin' && currentUser.role === 'admin' && (
           <AdminScreen
             tables={store.tables}
             categories={store.categories}
