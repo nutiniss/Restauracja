@@ -51,6 +51,11 @@ api.MapPost("/tables/{tableId:int}/orders/open", async (int tableId, RestaurantS
 api.MapPost("/tables/{tableId:int}/items", async (int tableId, AddOrderItemRequest request, RestaurantService service) => { await service.AddItemAsync(tableId, request); return Results.Ok(await service.GetStoreAsync()); });
 api.MapPut("/tables/{tableId:int}/waiter", async (int tableId, AssignWaiterRequest request, RestaurantService service) => { await service.AssignWaiterAsync(tableId, request); return Results.Ok(await service.GetStoreAsync()); });
 api.MapPost("/orders/{orderId:int}/payments", async (int orderId, PayOrderRequest request, RestaurantService service) => { await service.PayAsync(orderId, request); return Results.Ok(await service.GetStoreAsync()); });
+api.MapGet("/orders/{orderId:int}/receipt.pdf", async (int orderId, RestaurantDbContext db) =>
+{
+    var receipt = await BuildReceiptPdfAsync(orderId, db);
+    return Results.File(receipt, "application/pdf", $"rachunek-{orderId}.pdf");
+});
 api.MapPost("/tables/{tableId:int}/release", async (int tableId, RestaurantService service) => { await service.ReleaseTableAsync(tableId); return Results.Ok(await service.GetStoreAsync()); });
 api.MapPut("/admin/tables/{id:int}", async (int id, RestaurantTable table, RestaurantService service) => { table.Id = id; await service.UpsertTableAsync(table); return Results.Ok(await service.GetStoreAsync()); });
 api.MapPut("/admin/categories/{id:int}", async (int id, MenuCategory category, RestaurantService service) => { category.Id = id; await service.UpsertCategoryAsync(category); return Results.Ok(await service.GetStoreAsync()); });
@@ -116,6 +121,100 @@ static async Task<string> BuildDatabaseViewAsync(RestaurantDbContext db)
     sb.Append($"<footer>Wygenerowano: {WebUtility.HtmlEncode(DateTimeOffset.UtcNow.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture))}</footer></main></body></html>");
     return sb.ToString();
 }
+
+static async Task<byte[]> BuildReceiptPdfAsync(int orderId, RestaurantDbContext db)
+{
+    var order = await db.Orders
+        .AsNoTracking()
+        .Include(x => x.Table)
+        .Include(x => x.Waiter)
+        .FirstOrDefaultAsync(x => x.Id == orderId)
+        ?? throw new InvalidOperationException("Nie znaleziono zamówienia.");
+    var items = await db.OrderItems
+        .AsNoTracking()
+        .Include(x => x.MenuItem)
+        .Where(x => x.OrderId == orderId)
+        .OrderBy(x => x.Id)
+        .ToListAsync();
+    var payments = await db.Payments
+        .AsNoTracking()
+        .Where(x => x.OrderId == orderId)
+        .OrderBy(x => x.Id)
+        .ToListAsync();
+
+    var total = items.Sum(x => x.Total);
+    var paid = payments.Sum(x => x.Amount);
+    var tips = payments.Sum(x => x.TipAmount);
+    var lines = new List<string>
+    {
+        "Rachunek restauracji",
+        $"Stolik: {order.Table?.Number.ToString(CultureInfo.InvariantCulture) ?? order.TableId.ToString(CultureInfo.InvariantCulture)}",
+        $"Kelner: {(order.Waiter is null ? order.WaiterId.ToString(CultureInfo.InvariantCulture) : $"{order.Waiter.FirstName} {order.Waiter.LastName}")}",
+        $"Zamowienie: #{order.Id}",
+        $"Otwarte: {order.OpenedAt}",
+        "",
+        "Pozycje:"
+    };
+
+    lines.AddRange(items.Select(item =>
+        $"- {NormalizePdfText(item.MenuItem?.Name ?? $"Pozycja {item.MenuItemId}")} x{item.Quantity}: {Money(item.Total)}"));
+    lines.AddRange(new[]
+    {
+        "",
+        $"Razem: {Money(total)}",
+        $"Zaplacono: {Money(paid)}",
+        $"Napiwki: {Money(tips)}",
+        $"Pozostalo: {Money(Math.Max(total - paid, 0m))}",
+        "",
+        $"Wygenerowano: {DateTime.Now:yyyy-MM-dd HH:mm}"
+    });
+
+    return CreateSimplePdf(lines);
+}
+
+static byte[] CreateSimplePdf(IReadOnlyList<string> lines)
+{
+    var content = new StringBuilder("BT\n/F1 14 Tf\n50 790 Td\n18 TL\n");
+    foreach (var line in lines)
+    {
+        content.Append('(').Append(EscapePdfText(line)).Append(") Tj\nT*\n");
+    }
+    content.Append("ET");
+    var stream = Encoding.ASCII.GetBytes(content.ToString());
+    var objects = new List<string>
+    {
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        $"<< /Length {stream.Length} >>\nstream\n{content}\nendstream"
+    };
+
+    using var ms = new MemoryStream();
+    using var writer = new StreamWriter(ms, Encoding.ASCII, leaveOpen: true) { NewLine = "\n" };
+    writer.Write("%PDF-1.4\n");
+    var offsets = new List<long> { 0 };
+    for (var i = 0; i < objects.Count; i++)
+    {
+        writer.Flush();
+        offsets.Add(ms.Position);
+        writer.Write($"{i + 1} 0 obj\n{objects[i]}\nendobj\n");
+    }
+    writer.Flush();
+    var xrefOffset = ms.Position;
+    writer.Write($"xref\n0 {objects.Count + 1}\n0000000000 65535 f \n");
+    foreach (var offset in offsets.Skip(1)) writer.Write($"{offset:0000000000} 00000 n \n");
+    writer.Write($"trailer\n<< /Size {objects.Count + 1} /Root 1 0 R >>\nstartxref\n{xrefOffset}\n%%EOF");
+    writer.Flush();
+    return ms.ToArray();
+}
+
+static string EscapePdfText(string value) => NormalizePdfText(value).Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
+static string NormalizePdfText(string value) => value
+    .Replace('ą', 'a').Replace('ć', 'c').Replace('ę', 'e').Replace('ł', 'l').Replace('ń', 'n')
+    .Replace('ó', 'o').Replace('ś', 's').Replace('ż', 'z').Replace('ź', 'z')
+    .Replace('Ą', 'A').Replace('Ć', 'C').Replace('Ę', 'E').Replace('Ł', 'L').Replace('Ń', 'N')
+    .Replace('Ó', 'O').Replace('Ś', 'S').Replace('Ż', 'Z').Replace('Ź', 'Z');
 
 static object?[] Row(params object?[] cells) => cells;
 

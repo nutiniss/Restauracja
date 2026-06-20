@@ -45,6 +45,7 @@ export function TablesScreen({
   onReleaseTable,
   onCloseDetails,
   onAddOrderItem,
+  onDownloadReceipt,
 }: {
   tables: RestaurantTable[];
   selectedTable: RestaurantTable;
@@ -68,6 +69,7 @@ export function TablesScreen({
   onReleaseTable: () => void;
   onCloseDetails: () => void;
   onAddOrderItem: () => void;
+  onDownloadReceipt: () => void;
 }) {
   const selectedAmount = orderItems
     .filter(item => selectedItemIds.includes(item.id) && !item.isPaid)
@@ -266,6 +268,18 @@ export function TablesScreen({
               </Pressable>
             )}
           </View>
+          <Pressable
+            disabled={!selectedOrder}
+            style={[
+              styles.secondaryButton,
+              styles.receiptButton,
+              !selectedOrder && styles.disabledButton,
+            ]}
+            onPress={onDownloadReceipt}
+          >
+            <Text style={styles.secondaryButtonText}>Pobierz wydruk</Text>
+          </Pressable>
+
         </ScrollView>
 
         <Modal
@@ -511,6 +525,7 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: { color: colors.primary, fontWeight: '800' },
   paymentButton: { minWidth: 124 },
+  receiptButton: { marginTop: 16 },
   paymentLabel: {
     color: colors.text,
     flex: 1,
