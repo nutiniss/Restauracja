@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
-  Linking,
+  NativeModules,
+  Platform,
   Modal,
   Pressable,
   StyleSheet,
@@ -75,7 +76,7 @@ const base64Encode = (value: string) => {
   return output;
 };
 
-const createInvoicePdfDataUrl = (
+const createInvoicePdfBase64 = (
   { payment, table, method }: InvoiceContext,
   buyer: InvoiceBuyer,
 ) => {
@@ -127,8 +128,10 @@ const createInvoicePdfDataUrl = (
   });
   pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefPosition}\n%%EOF`;
 
-  return `data:application/pdf;base64,${base64Encode(pdf)}`;
+  return base64Encode(pdf);
 };
+
+const { InvoicePdf } = NativeModules;
 
 export function HistoryScreen({
   payments,
@@ -167,14 +170,38 @@ export function HistoryScreen({
     setBuyer({ name: '', taxId: '', address: '' });
   };
 
-  const downloadGeneratedInvoice = () => {
+  const downloadGeneratedInvoice = async () => {
     if (!invoiceContext || !canDownloadInvoice) {
       Alert.alert('Uzupełnij dane', 'Podaj nazwę i adres nabywcy faktury.');
       return;
     }
 
-    Linking.openURL(createInvoicePdfDataUrl(invoiceContext, buyer));
-    closeInvoiceModal();
+    if (Platform.OS !== 'android' || !InvoicePdf?.saveInvoicePdf) {
+      Alert.alert(
+        'Nie można zapisać PDF',
+        'Zapisywanie faktury jest obecnie obsługiwane tylko na Androidzie.',
+      );
+      return;
+    }
+
+    const invoiceNumber = toInvoiceNumber(invoiceContext.payment).replace(
+      /[^a-zA-Z0-9_-]/g,
+      '_',
+    );
+
+    try {
+      await InvoicePdf.saveInvoicePdf(
+        `${invoiceNumber}.pdf`,
+        createInvoicePdfBase64(invoiceContext, buyer),
+      );
+      closeInvoiceModal();
+      Alert.alert('Faktura zapisana', 'PDF został zapisany w folderze Pobrane.');
+    } catch (error) {
+      Alert.alert(
+        'Nie udało się zapisać faktury',
+        error instanceof Error ? error.message : 'Spróbuj ponownie później.',
+      );
+    }
   };
 
   return (
