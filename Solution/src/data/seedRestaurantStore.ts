@@ -1,6 +1,19 @@
-import {MenuCategory, MenuItem, Order, OrderItem, Payment, PaymentMethod, RestaurantTable, Waiter} from '../domain/entities';
-import {OrderItemStatus, OrderStatus, TableStatus} from '../domain/enums/RestaurantEnums';
-import {RestaurantStore} from '../domain/repositories/RestaurantStore';
+import {
+  MenuCategory,
+  MenuItem,
+  Order,
+  OrderItem,
+  Payment,
+  PaymentMethod,
+  RestaurantTable,
+  Waiter,
+} from '../domain/entities';
+import {
+  OrderItemStatus,
+  OrderStatus,
+  TableStatus,
+} from '../domain/enums/RestaurantEnums';
+import { RestaurantStore } from '../domain/repositories/RestaurantStore';
 
 export const createSeedRestaurantStore = (): RestaurantStore => ({
   waiters: [

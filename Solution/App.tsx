@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { restaurantApi } from './src/api/restaurantApi';
 import {
   MenuCategory,
@@ -607,92 +608,94 @@ function App(): React.JSX.Element {
   };
 
   return (
-    <AppShell
-      activeTab={activeTab}
-      mode={mode}
-      apiStatus={apiStatus}
-      onChangeMode={changeMode}
-      onChangeTab={changeTab}
-    >
-      {activeTab === 'tables' && (
-        <TablesScreen
-          tables={activeTables}
-          selectedTable={selectedTable}
-          selectedOrder={selectedOrder}
-          orderItems={selectedOrderItems}
-          paymentMethods={activePaymentMethods}
-          waiters={activeWaiters}
-          paymentMethodId={paymentMethodId}
-          selectedItemIds={selectedItemIds}
-          isDetailsOpen={isTableDetailsOpen}
-          getWaiter={getWaiter}
-          getMenuItem={getMenuItem}
-          getOrderTotal={getOrderTotal}
-          getPaidTotal={getPaidTotal}
-          onOpenOrder={openOrder}
-          onTogglePaymentItem={togglePaymentItem}
-          onChangePaymentMethod={setPaymentMethodId}
-          onAssignWaiter={assignWaiterToSelectedTable}
-          onPaySelectedItems={paySelectedItems}
-          onPayFullBill={payFullBill}
-          onReleaseTable={releaseSelectedTable}
-          onCloseDetails={() => {
-            setIsTableDetailsOpen(false);
-            setSelectedItemIds([]);
-          }}
-          onAddOrderItem={goToOrderItemSelection}
-        />
-      )}
-      {activeTab === 'menu' && (
-        <MenuScreen
-          categories={activeCategories}
-          menuItems={activeMenuItems}
-          tables={activeTables}
-          selectedCategoryId={selectedCategoryId}
-          search={search}
-          sourceTableId={menuSourceTableId}
-          onSelectCategory={setSelectedCategoryId}
-          onChangeSearch={setSearch}
-          onAddItem={addItemToOrder}
-          onBackToOrder={backToOrderDetails}
-        />
-      )}
-      {activeTab === 'waiters' && (
-        <WaitersScreen waiters={store.waiters} tables={store.tables} />
-      )}
-      {activeTab === 'admin' && (
-        <AdminScreen
-          tables={store.tables}
-          categories={store.categories}
-          menuItems={store.menuItems}
-          paymentMethods={store.paymentMethods}
-          waiters={store.waiters}
-          onSaveTable={saveTable}
-          onSaveCategory={saveCategory}
-          onSaveMenuItem={saveMenuItemFromAdmin}
-          onSavePaymentMethod={savePaymentMethod}
-          onSaveWaiter={saveWaiter}
-          onDeactivateTable={deactivateTable}
-          onDeactivateCategory={deactivateCategory}
-          onDeactivateMenuItem={deactivateMenuItem}
-          onDeactivatePaymentMethod={deactivatePaymentMethod}
-          onDeactivateWaiter={deactivateWaiter}
-          onActivateTable={activateTable}
-          onActivateCategory={activateCategory}
-          onActivateMenuItem={activateMenuItem}
-          onActivatePaymentMethod={activatePaymentMethod}
-          onActivateWaiter={activateWaiter}
-        />
-      )}
-      {activeTab === 'history' && (
-        <HistoryScreen
-          payments={store.payments}
-          orders={store.orders}
-          tables={store.tables}
-          paymentMethods={store.paymentMethods}
-        />
-      )}
-    </AppShell>
+    <SafeAreaProvider>
+      <AppShell
+        activeTab={activeTab}
+        mode={mode}
+        apiStatus={apiStatus}
+        onChangeMode={changeMode}
+        onChangeTab={changeTab}
+      >
+        {activeTab === 'tables' && (
+          <TablesScreen
+            tables={activeTables}
+            selectedTable={selectedTable}
+            selectedOrder={selectedOrder}
+            orderItems={selectedOrderItems}
+            paymentMethods={activePaymentMethods}
+            waiters={activeWaiters}
+            paymentMethodId={paymentMethodId}
+            selectedItemIds={selectedItemIds}
+            isDetailsOpen={isTableDetailsOpen}
+            getWaiter={getWaiter}
+            getMenuItem={getMenuItem}
+            getOrderTotal={getOrderTotal}
+            getPaidTotal={getPaidTotal}
+            onOpenOrder={openOrder}
+            onTogglePaymentItem={togglePaymentItem}
+            onChangePaymentMethod={setPaymentMethodId}
+            onAssignWaiter={assignWaiterToSelectedTable}
+            onPaySelectedItems={paySelectedItems}
+            onPayFullBill={payFullBill}
+            onReleaseTable={releaseSelectedTable}
+            onCloseDetails={() => {
+              setIsTableDetailsOpen(false);
+              setSelectedItemIds([]);
+            }}
+            onAddOrderItem={goToOrderItemSelection}
+          />
+        )}
+        {activeTab === 'menu' && (
+          <MenuScreen
+            categories={activeCategories}
+            menuItems={activeMenuItems}
+            tables={activeTables}
+            selectedCategoryId={selectedCategoryId}
+            search={search}
+            sourceTableId={menuSourceTableId}
+            onSelectCategory={setSelectedCategoryId}
+            onChangeSearch={setSearch}
+            onAddItem={addItemToOrder}
+            onBackToOrder={backToOrderDetails}
+          />
+        )}
+        {activeTab === 'waiters' && (
+          <WaitersScreen waiters={store.waiters} tables={store.tables} />
+        )}
+        {activeTab === 'admin' && (
+          <AdminScreen
+            tables={store.tables}
+            categories={store.categories}
+            menuItems={store.menuItems}
+            paymentMethods={store.paymentMethods}
+            waiters={store.waiters}
+            onSaveTable={saveTable}
+            onSaveCategory={saveCategory}
+            onSaveMenuItem={saveMenuItemFromAdmin}
+            onSavePaymentMethod={savePaymentMethod}
+            onSaveWaiter={saveWaiter}
+            onDeactivateTable={deactivateTable}
+            onDeactivateCategory={deactivateCategory}
+            onDeactivateMenuItem={deactivateMenuItem}
+            onDeactivatePaymentMethod={deactivatePaymentMethod}
+            onDeactivateWaiter={deactivateWaiter}
+            onActivateTable={activateTable}
+            onActivateCategory={activateCategory}
+            onActivateMenuItem={activateMenuItem}
+            onActivatePaymentMethod={activatePaymentMethod}
+            onActivateWaiter={activateWaiter}
+          />
+        )}
+        {activeTab === 'history' && (
+          <HistoryScreen
+            payments={store.payments}
+            orders={store.orders}
+            tables={store.tables}
+            paymentMethods={store.paymentMethods}
+          />
+        )}
+      </AppShell>
+    </SafeAreaProvider>
   );
 }
 
