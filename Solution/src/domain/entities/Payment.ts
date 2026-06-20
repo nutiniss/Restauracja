@@ -1,4 +1,4 @@
-import { PaymentStatus } from '../enums/RestaurantEnums';
+import {PaymentStatus} from '../enums/RestaurantEnums';
 
 export class Payment {
   constructor(
@@ -9,11 +9,5 @@ export class Payment {
     public readonly tipAmount: number,
     public readonly paidAt: string,
     public readonly status: PaymentStatus = PaymentStatus.Completed,
-    public readonly invoiceNumber?: string,
-    public readonly invoiceUrl?: string,
   ) {}
-
-  get hasInvoice(): boolean {
-    return Boolean(this.invoiceNumber && this.invoiceUrl);
-  }
 }

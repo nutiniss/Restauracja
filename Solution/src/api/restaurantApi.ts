@@ -94,8 +94,6 @@ const toStore = (data: RestaurantStore): RestaurantStore => ({
         payment.tipAmount,
         payment.paidAt,
         payment.status,
-        payment.invoiceNumber,
-        payment.invoiceUrl,
       ),
   ),
   paymentMethods: data.paymentMethods.map(
