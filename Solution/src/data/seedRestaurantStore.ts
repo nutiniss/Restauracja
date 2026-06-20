@@ -48,9 +48,16 @@ export const createSeedRestaurantStore = (): RestaurantStore => ({
     new RestaurantTable(6, 6, 8, 'Sala'),
   ],
   orders: [
-    new Order(1, 2, 1, '12:30', OrderStatus.Open),
-    new Order(2, 3, 2, '13:05', OrderStatus.PartiallyPaid),
-    new Order(3, 5, 3, '11:40', OrderStatus.Paid, '12:25'),
+    new Order(1, 2, 1, '2026-06-20 12:30', OrderStatus.Open),
+    new Order(2, 3, 2, '2026-06-20 13:05', OrderStatus.PartiallyPaid),
+    new Order(
+      3,
+      5,
+      3,
+      '2026-06-20 11:40',
+      OrderStatus.Paid,
+      '2026-06-20 12:25',
+    ),
   ],
   orderItems: [
     new OrderItem(1, 1, 1, 1, 32, OrderItemStatus.Served),
@@ -60,7 +67,7 @@ export const createSeedRestaurantStore = (): RestaurantStore => ({
     new OrderItem(5, 3, 5, 2, 10, OrderItemStatus.Paid, 2),
   ],
   payments: [
-    new Payment(1, 2, 1, 39, 0, '13:30'),
-    new Payment(2, 3, 2, 20, 5, '12:25'),
+    new Payment(1, 2, 1, 39, 0, '2026-06-20 13:30'),
+    new Payment(2, 3, 2, 20, 5, '2026-06-20 12:25'),
   ],
 });

@@ -26,6 +26,12 @@ import { MenuScreen } from './src/ui/screens/MenuScreen';
 import { TablesScreen } from './src/ui/screens/TablesScreen';
 import { WaitersScreen } from './src/ui/screens/WaitersScreen';
 
+const currentTimestamp = () =>
+  new Date().toLocaleString('pl-PL', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+
 const initialStore = restaurantApi.seedStore();
 
 function App(): React.JSX.Element {
@@ -111,7 +117,7 @@ function App(): React.JSX.Element {
         newOrderId,
         table.id,
         waiterId,
-        'teraz',
+        currentTimestamp(),
         OrderStatus.Open,
       );
 
@@ -171,7 +177,13 @@ function App(): React.JSX.Element {
         ? current.orders
         : [
             ...current.orders,
-            new Order(orderId, table.id, waiterId, 'teraz', OrderStatus.Open),
+            new Order(
+              orderId,
+              table.id,
+              waiterId,
+              currentTimestamp(),
+              OrderStatus.Open,
+            ),
           ];
 
       return {
@@ -274,7 +286,7 @@ function App(): React.JSX.Element {
         currentOrder.id === order.id
           ? currentOrder.updateStatus(
               orderStatus,
-              hasUnpaidItems ? undefined : 'teraz',
+              hasUnpaidItems ? undefined : currentTimestamp(),
             )
           : currentOrder,
       ),
@@ -335,7 +347,7 @@ function App(): React.JSX.Element {
         paymentMethodId,
         amount,
         tipAmount,
-        'teraz',
+        currentTimestamp(),
       );
       const paidIds = itemsToPay.map(item => item.id);
 
@@ -379,7 +391,7 @@ function App(): React.JSX.Element {
         paymentMethodId,
         amount,
         tipAmount,
-        'teraz',
+        currentTimestamp(),
       );
       const paidIds = itemsToPay.map(item => item.id);
 
@@ -639,6 +651,13 @@ function App(): React.JSX.Element {
         currentUser={currentUser}
         onChangeMode={changeMode}
         onChangeTab={changeTab}
+        onLogout={() => {
+          setCurrentUser(undefined);
+          setMode('service');
+          setActiveTab('tables');
+          setIsTableDetailsOpen(false);
+          setSelectedItemIds([]);
+        }}
       >
         {activeTab === 'tables' && (
           <TablesScreen
@@ -684,7 +703,13 @@ function App(): React.JSX.Element {
           />
         )}
         {activeTab === 'waiters' && (
-          <WaitersScreen waiters={store.waiters} tables={store.tables} />
+          <WaitersScreen
+            waiters={store.waiters}
+            tables={store.tables}
+            orders={store.orders}
+            orderItems={store.orderItems}
+            payments={store.payments}
+          />
         )}
         {activeTab === 'admin' && currentUser.role === 'admin' && (
           <AdminScreen
@@ -716,6 +741,8 @@ function App(): React.JSX.Element {
             orders={store.orders}
             tables={store.tables}
             paymentMethods={store.paymentMethods}
+            orderItems={store.orderItems}
+            waiters={store.waiters}
           />
         )}
       </AppShell>
